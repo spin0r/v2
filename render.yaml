@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: viper-web
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: node web-api.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    healthCheckPath: /health

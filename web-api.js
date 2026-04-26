@@ -321,6 +321,42 @@ async function handleApsFetch(params, res) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+//  DIRECT URL FETCH  (paste a thread URL → scrape + extract + upload)
+// ────────────────────────────────────────────────────────────────────────────
+async function handleDirectFetch(params, res) {
+  const url = params.get("url") || "";
+  if (!url) return sendJSON(res, 400, { error: "Missing url" });
+
+  try {
+    if (url.includes("vipergirls.to")) {
+      const downloader = new ViperGirlsDownloader();
+      const [pagesData] = await downloader.scrapeThread(url);
+      const title = pagesData[0]?.title || url;
+      const allLinks = pagesData.flatMap(p => p.posts.flatMap(q => q.links));
+      const result = await extractAndUpload(allLinks, title, url, null);
+      if (result.ok) addToHistory(result);
+      return sendJSON(res, 200, result);
+    }
+
+    if (url.includes("adultphotosets")) {
+      const scraper = new AdultPhotoSetsScraper();
+      const links = await scraper.getPostLinks(url);
+      // Try to get a title from the URL
+      const titleMatch = url.match(/\/([^/]+)\/?$/);
+      const title = titleMatch ? titleMatch[1].replace(/-/g, ' ') : url;
+      const result = await extractAndUpload(links, title, url, null);
+      if (result.ok) addToHistory(result);
+      return sendJSON(res, 200, result);
+    }
+
+    sendJSON(res, 400, { error: "URL must be from vipergirls.to or adultphotosets" });
+  } catch (err) {
+    console.error("[Direct Fetch Error]", err.message);
+    sendJSON(res, 500, { error: err.message });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 //  IMX EXTRACT  (imx.to viewer links → direct URLs → paste)
 // ────────────────────────────────────────────────────────────────────────────
 async function handleImxExtract(req, res) {
@@ -435,6 +471,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/search/aps") return await handleApsSearch(params, res);
     if (pathname === "/api/fetch/vg")   return await handleVgFetch(params, res);
     if (pathname === "/api/fetch/aps")  return await handleApsFetch(params, res);
+    if (pathname === "/api/fetch/url")  return await handleDirectFetch(params, res);
     if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
     if (pathname === "/api/imx/upload")  return await handleImxUpload(req, res);
     if (pathname === "/api/history")    return handleHistory(params, res);

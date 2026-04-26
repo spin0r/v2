@@ -10,6 +10,9 @@ let state = {
   totalPages: 1,
   totalResults: 0,
   modalData: null,
+  // direct URL fetch
+  directFetchLoading: false,
+  directFetchResult: null,
   // history
   historyLoading: false,
   historyResults: [],
@@ -43,6 +46,12 @@ async function apiFetch(tab, id, query = '') {
 
 async function apiHistory(page = 1) {
   const res = await fetch(`${API}/history?page=${page}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiDirectFetch(url) {
+  const res = await fetch(`${API}/fetch/url?url=${encodeURIComponent(url)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -211,6 +220,51 @@ function renderCard(r, idx) {
 
 // ====== RESULTS SECTION ======
 function renderResults() {
+  if (state.directFetchLoading) {
+    return `
+      <div class="results-list">
+        <div class="status-bar fade-in">
+          <div class="status-info" style="gap:12px">
+            <div class="spinner"></div>
+            <span>Scraping thread & extracting images…</span>
+          </div>
+        </div>
+        ${renderSkeleton()}
+      </div>`;
+  }
+
+  if (state.directFetchResult) {
+    const d = state.directFetchResult;
+    if (d.ok) {
+      const previewHtml = (d.previewUrls || []).map(u =>
+        `<div class="preview-url glitch" data-effect="scramble" title="${u}">${u}</div>`
+      ).join('');
+
+      return `
+        <div class="imx-result fade-in">
+          <div class="result-info-grid">
+            <div class="info-row"><span class="info-key">Title</span><span class="info-val">${d.title || ''}</span></div>
+            <div class="info-row"><span class="info-key">Images</span><span class="info-val accent">${d.extracted}/${d.total}</span></div>
+            ${d.services ? `<div class="info-row"><span class="info-key">Service</span><span class="info-val">${d.services}</span></div>` : ''}
+            <div class="info-row"><span class="info-key">Source</span><span class="info-val url-val" title="${d.sourceUrl}">${d.sourceUrl}</span></div>
+            ${d.pasteUrl ? `<div class="info-row"><span class="info-key">Link</span><span class="info-val"><a class="paste-link" href="${d.pasteUrl}" target="_blank" rel="noopener">${d.pasteUrl}</a></span></div>` : ''}
+          </div>
+          ${d.sendCommand || d.dlCommand ? `<div class="cmd-block" data-copy-cmd="${[d.sendCommand, d.dlCommand].filter(Boolean).join('\\n')}">${[d.sendCommand, d.dlCommand].filter(Boolean).map(c => `<div class="cmd-line">${c}</div>`).join('')}</div>` : ''}
+          ${previewHtml ? `<div class="preview-block" style="margin-top:16px">${previewHtml}</div>` : ''}
+          <div class="modal-actions" style="margin-top:16px">
+            ${d.pasteUrl ? `<button class="action-btn" id="df-copy-paste">${svgIcon('copy')} Copy Link</button>` : ''}
+            ${d.sendCommand ? `<button class="action-btn" id="df-copy-send">${svgIcon('copy')} Copy /send</button>` : ''}
+            <button class="action-btn primary" id="df-open" data-url="${d.sourceUrl}">${svgIcon('external')} Open Thread</button>
+          </div>
+        </div>`;
+    } else {
+      return `
+        <div class="imx-result fade-in">
+          <div class="error-msg">${d.error || 'Extraction failed'}</div>
+        </div>`;
+    }
+  }
+
   if (state.loading) {
     return `<div class="results-list">${renderSkeleton()}</div>`;
   }
@@ -519,9 +573,38 @@ function render() {
   });
 }
 
+// ====== URL DETECTION ======
+function isThreadUrl(text) {
+  return /https?:\/\/(www\.)?vipergirls\.to\/threads\//i.test(text) ||
+         /https?:\/\/(www\.)?adultphotosets/i.test(text);
+}
+
 // ====== SEARCH ======
 async function doSearch(query, page = 1) {
   if (!query.trim()) return;
+
+  // If user pasted a thread URL, go directly to extraction (inline)
+  if (isThreadUrl(query.trim())) {
+    state.query = query;
+    state.results = [];
+    state.directFetchLoading = true;
+    state.directFetchResult = null;
+    render();
+    try {
+      const data = await apiDirectFetch(query.trim());
+      state.directFetchResult = {
+        ...data,
+        title: data.title || query.trim(),
+        sourceUrl: data.sourceUrl || query.trim(),
+      };
+    } catch (err) {
+      state.directFetchResult = { ok: false, error: err.message };
+    }
+    state.directFetchLoading = false;
+    render();
+    return;
+  }
+
   state.query = query;
   state.page = page;
   state.loading = true;

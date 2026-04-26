@@ -1,8 +1,8 @@
 /* ===== DESIGN SYSTEM ===== */
 :root {
-  --bg: #0a0a0a;
-  --bg-2: #111111;
-  --bg-3: #1a1a1a;
+  --bg: #161718;
+  --bg-2: #1c1d1e;
+  --bg-3: #222324;
   --surface: rgba(255, 255, 255, 0.04);
   --surface-hover: rgba(255, 255, 255, 0.07);
   --border: rgba(255, 255, 255, 0.08);
@@ -47,40 +47,36 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAAElBMVEUAAAAAAAAAAAAAAAAAAAAAAADgKxmiAAAABnRSTlMFBQUFBQWoay6DAAAASUlEQVQ4y2MQRgMMDCiBKIMoCkGhKIoqRBOE0MQxAFWRMIZCYQyFIugKhTEUCqMrFMZSKIylUBhLIYY5YugKMcwRw1CIMYcWAABFQi7MibxRjgAAAABJRU5ErkJggg==");
+  background-repeat: repeat;
+  background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
-  opacity: 0.4;
-  will-change: transform;
-  transform: translateZ(0);
+  opacity: 0.03;
 }
 
 /* ===== AMBIENT GLOW ===== */
 .glow-orb {
   position: fixed;
   border-radius: 50%;
-  filter: blur(120px);
   pointer-events: none;
   z-index: 0;
-  will-change: transform;
-  transform: translateZ(0);
-  contain: strict;
 }
 
 .glow-orb-1 {
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(255, 77, 28, 0.12) 0%, transparent 70%);
-  top: -200px;
-  left: -200px;
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(circle, rgba(255, 77, 28, 0.07) 0%, rgba(255, 77, 28, 0.03) 30%, transparent 60%);
+  top: -350px;
+  left: -350px;
 }
 
 .glow-orb-2 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(255, 122, 80, 0.08) 0%, transparent 70%);
-  bottom: 0;
-  right: -100px;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(255, 122, 80, 0.05) 0%, rgba(255, 122, 80, 0.02) 30%, transparent 60%);
+  bottom: -150px;
+  right: -200px;
 }
 
 /* ===== LAYOUT ===== */
@@ -99,7 +95,7 @@ nav {
   justify-content: space-between;
   padding: 20px 40px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 10, 10, 0.8);
+  background: rgba(22, 23, 24, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   position: sticky;

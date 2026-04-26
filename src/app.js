@@ -13,6 +13,11 @@ let state = {
   // direct URL fetch
   directFetchLoading: false,
   directFetchResult: null,
+  // thread viewer
+  threadData: null,
+  threadPage: 0, // 0-indexed page in threadData.pages
+  threadExtractingPost: null, // gidx of the post being extracted
+  threadExtractedPosts: {}, // gidx -> result object
   // history
   historyLoading: false,
   historyResults: [],
@@ -52,6 +57,12 @@ async function apiHistory(page = 1) {
 
 async function apiDirectFetch(url) {
   const res = await fetch(`${API}/fetch/url?url=${encodeURIComponent(url)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function apiThreadPostExtract(threadId, postIndex) {
+  const res = await fetch(`${API}/fetch/thread-post?threadId=${encodeURIComponent(threadId)}&postIndex=${postIndex}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -220,13 +231,17 @@ function renderCard(r, idx) {
 
 // ====== RESULTS SECTION ======
 function renderResults() {
+  if (state.threadData) {
+    return renderThreadView();
+  }
+
   if (state.directFetchLoading) {
     return `
       <div class="results-list">
         <div class="status-bar fade-in">
           <div class="status-info" style="gap:12px">
             <div class="spinner"></div>
-            <span>Scraping thread & extracting images…</span>
+            <span>Fetching thread details…</span>
           </div>
         </div>
         ${renderSkeleton()}
@@ -303,6 +318,61 @@ function renderResults() {
     </div>
     <div class="results-list">
       ${state.results.map((r,i) => renderCard(r,i)).join('')}
+    </div>`;
+}
+
+// ====== THREAD VIEW ======
+function renderThreadView() {
+  const d = state.threadData;
+  const pageData = d.pages[state.threadPage];
+  if (!pageData) return '<div class="error-msg">Invalid page</div>';
+
+  const globalStart = d.pages.slice(0, state.threadPage).reduce((s, p) => s + p.posts.length, 0);
+  const totalPosts = d.pages.reduce((s, p) => s + p.posts.length, 0);
+
+  const postsHtml = pageData.posts.map((post, i) => {
+    const gidx = globalStart + i;
+    const isExtracting = state.threadExtractingPost === gidx;
+    const delay = Math.min(i * 40, 400);
+    // Page-relative display number
+    const displayNum = gidx + 1;
+
+    const actionsHtml = isExtracting
+      ? `<div class="result-actions"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div></div>`
+      : `<div class="result-actions">
+           <button class="action-btn primary extract-post-btn" data-gidx="${gidx}" title="Get images">Get images</button>
+         </div>`;
+
+    return `
+      <div class="result-card fade-in" style="animation-delay:${delay}ms">
+        <span class="result-index">${displayNum}</span>
+        <div class="result-body">
+          <div class="result-title">${post.title || `Post #${displayNum}`}</div>
+          <div class="result-meta">
+            <span class="result-prefix">VG</span>
+            <span class="result-id">${post.count} images</span>
+          </div>
+        </div>
+        ${actionsHtml}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="status-bar fade-in">
+      <div class="status-info">
+        <span class="status-count">${totalPosts}</span>
+        <span>posts in thread &ldquo;<strong>${d.title}</strong>&rdquo;</span>
+      </div>
+      <div class="status-actions">
+        <div class="pagination">
+          <button class="icon-btn" id="thread-prev-page" ${state.threadPage <= 0 ? 'disabled' : ''}>${svgIcon('chevron_left')}</button>
+          <span class="page-info">Page ${state.threadPage + 1} / ${d.totalPages}</span>
+          <button class="icon-btn" id="thread-next-page" ${state.threadPage >= d.pages.length - 1 ? 'disabled' : ''}>${svgIcon('chevron_right')}</button>
+        </div>
+      </div>
+    </div>
+    <div class="results-list">
+      ${postsHtml}
     </div>`;
 }
 
@@ -589,14 +659,18 @@ async function doSearch(query, page = 1) {
     state.results = [];
     state.directFetchLoading = true;
     state.directFetchResult = null;
+    state.threadData = null;
+    state.threadExtractedPosts = {};
     render();
     try {
       const data = await apiDirectFetch(query.trim());
-      state.directFetchResult = {
-        ...data,
-        title: data.title || query.trim(),
-        sourceUrl: data.sourceUrl || query.trim(),
-      };
+      if (data.ok && data.threadData) {
+        state.threadData = data.threadData;
+        state.threadId = data.threadId;
+        state.threadPage = 0;
+      } else {
+        state.directFetchResult = { ok: false, error: 'Failed to fetch thread' };
+      }
     } catch (err) {
       state.directFetchResult = { ok: false, error: err.message };
     }
@@ -767,9 +841,87 @@ function bindEvents() {
   const overlay = appEl.querySelector('#modal-overlay');
   if (overlay) {
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) { state.modalData = null; render(); }
+      if (e.target === overlay) {
+        state.modalData = null;
+        render();
+      }
     });
   }
+
+  // Direct fetch actions
+  const dfOpenBtn = appEl.querySelector('#df-open');
+  if (dfOpenBtn) dfOpenBtn.addEventListener('click', () => window.open(dfOpenBtn.dataset.url, '_blank', 'noopener'));
+
+  const cmdBlock = appEl.querySelector('.cmd-block');
+  if (cmdBlock) cmdBlock.addEventListener('click', () => copyText(cmdBlock.dataset.copyCmd.replace(/\\n/g, '\n')));
+
+  const dfCopyPaste = appEl.querySelector('#df-copy-paste');
+  if (dfCopyPaste && state.directFetchResult?.pasteUrl) {
+    dfCopyPaste.addEventListener('click', () => copyText(state.directFetchResult.pasteUrl));
+  }
+
+  const dfCopySend = appEl.querySelector('#df-copy-send');
+  if (dfCopySend && state.directFetchResult?.sendCommand) {
+    dfCopySend.addEventListener('click', () => copyText(state.directFetchResult.sendCommand));
+  }
+
+  // Thread view pagination
+  const threadPrevBtn = appEl.querySelector('#thread-prev-page');
+  const threadNextBtn = appEl.querySelector('#thread-next-page');
+  if (threadPrevBtn) {
+    threadPrevBtn.addEventListener('click', () => {
+      if (state.threadPage > 0) {
+        state.threadPage--;
+        render();
+      }
+    });
+  }
+  if (threadNextBtn) {
+    threadNextBtn.addEventListener('click', () => {
+      if (state.threadData && state.threadPage < state.threadData.pages.length - 1) {
+        state.threadPage++;
+        render();
+      }
+    });
+  }
+
+  // Thread view extract buttons — open result in the same modal as regular search
+  appEl.querySelectorAll('.extract-post-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const gidx = parseInt(btn.dataset.gidx);
+
+      // Find post title for modal header
+      const d = state.threadData;
+      let postTitle = `Post #${gidx + 1}`;
+      let cur = 0;
+      outer: for (const page of d.pages) {
+        for (const p of page.posts) {
+          if (cur === gidx) { postTitle = p.title || postTitle; break outer; }
+          cur++;
+        }
+      }
+
+      // Show loading modal
+      state.modalData = { loading: true, loadingMsg: 'Extracting images…', title: postTitle };
+      state.threadExtractingPost = gidx;
+      render();
+
+      try {
+        const data = await apiThreadPostExtract(state.threadId, gidx);
+        state.modalData = {
+          ...data,
+          title: data.title || postTitle,
+          sourceUrl: data.sourceUrl || d.url,
+        };
+      } catch (err) {
+        state.modalData = { ok: false, error: err.message, title: postTitle, sourceUrl: d.url };
+      }
+      state.threadExtractingPost = null;
+      render();
+    });
+  });
+
   const modalClose = appEl.querySelector('#modal-close');
   if (modalClose) modalClose.addEventListener('click', () => { state.modalData = null; render(); });
 
@@ -782,11 +934,11 @@ function bindEvents() {
   const modalOpen = appEl.querySelector('#modal-open');
   if (modalOpen) modalOpen.addEventListener('click', () => window.open(modalOpen.dataset.url, '_blank', 'noopener'));
 
-  // Copy command lines on click
+  // Copy command lines on click — unescape \n stored in data attribute into real newlines
   appEl.querySelectorAll('[data-copy-cmd]').forEach(el => {
     el.style.cursor = 'pointer';
     el.title = 'Click to copy';
-    el.addEventListener('click', () => copyText(el.dataset.copyCmd));
+    el.addEventListener('click', () => copyText(el.dataset.copyCmd.replace(/\\n/g, '\n')));
   });
 
   // IMX mode tabs

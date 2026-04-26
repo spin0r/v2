@@ -25,6 +25,7 @@ function md5(s) {
 // In-memory session cache
 const vgCache = new Map();  // key -> results[]
 const apsCache = new Map();
+const threadCache = new Map(); // key -> threadData
 
 // ────────────────────────────────────────────────────────────────────────────
 //  PERSISTENT HISTORY  (JSON file backed)
@@ -321,8 +322,23 @@ async function handleApsFetch(params, res) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-//  DIRECT URL FETCH  (paste a thread URL → scrape + extract + upload)
+//  DIRECT URL FETCH INFO (paste a thread URL → scrape + return structure)
 // ────────────────────────────────────────────────────────────────────────────
+
+// Derive a search query from a thread URL slug.
+// e.g. "10182278-Blake-Blossom-Galleries" → "Blake Blossom"
+function slugToQuery(url) {
+  const STOP_WORDS = new Set(['galleries', 'gallery', 'thread', 'threads', 'collection',
+    'sets', 'set', 'pics', 'images', 'photos', 'pack', 'mega', 'vol', 'part']);
+  const slugMatch = url.match(/\/threads\/([^/\?]+)/i) ||
+                    url.match(/\/([^/]+)\/?$/);
+  if (!slugMatch) return null;
+  const slug = slugMatch[1];
+  const parts = slug.split('-').filter(p => p && !/^\d+$/.test(p));  // drop pure numbers
+  const words = parts.filter(p => !STOP_WORDS.has(p.toLowerCase()));
+  return words.length ? words.join(' ') : null;
+}
+
 async function handleDirectFetch(params, res) {
   const url = params.get("url") || "";
   if (!url) return sendJSON(res, 400, { error: "Missing url" });
@@ -330,28 +346,72 @@ async function handleDirectFetch(params, res) {
   try {
     if (url.includes("vipergirls.to")) {
       const downloader = new ViperGirlsDownloader();
-      const [pagesData] = await downloader.scrapeThread(url);
-      const title = pagesData[0]?.title || url;
-      const allLinks = pagesData.flatMap(p => p.posts.flatMap(q => q.links));
-      const result = await extractAndUpload(allLinks, title, url, null);
-      if (result.ok) addToHistory(result);
-      return sendJSON(res, 200, result);
+      const [pagesData, totalPages] = await downloader.scrapeThread(url);
+      const title = pagesData[0]?.posts[0]?.title || url;
+      const threadId = md5(url).slice(0, 8);
+      const searchQuery = slugToQuery(url);
+
+      const threadData = { url, title, searchQuery, pages: pagesData, totalPages, type: 'vg' };
+      threadCache.set(threadId, threadData);
+
+      return sendJSON(res, 200, { ok: true, threadId, threadData });
     }
 
     if (url.includes("adultphotosets")) {
       const scraper = new AdultPhotoSetsScraper();
       const links = await scraper.getPostLinks(url);
-      // Try to get a title from the URL
       const titleMatch = url.match(/\/([^/]+)\/?$/);
       const title = titleMatch ? titleMatch[1].replace(/-/g, ' ') : url;
-      const result = await extractAndUpload(links, title, url, null);
-      if (result.ok) addToHistory(result);
-      return sendJSON(res, 200, result);
+      const threadId = md5(url).slice(0, 8);
+      const searchQuery = slugToQuery(url);
+
+      const threadData = { url, title, searchQuery, pages: [{ page_num: 1, posts: [{ title: 'Main Post', links, count: links.length }] }], totalPages: 1, type: 'aps' };
+      threadCache.set(threadId, threadData);
+
+      return sendJSON(res, 200, { ok: true, threadId, threadData });
     }
 
     sendJSON(res, 400, { error: "URL must be from vipergirls.to or adultphotosets" });
   } catch (err) {
     console.error("[Direct Fetch Error]", err.message);
+    sendJSON(res, 500, { error: err.message });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  THREAD EXTRACT (extract specific post from cached thread)
+// ────────────────────────────────────────────────────────────────────────────
+async function handleThreadExtract(params, res) {
+  const threadId = params.get("threadId");
+  const gidx = parseInt(params.get("postIndex") || "0");
+  if (!threadId) return sendJSON(res, 400, { error: "Missing threadId" });
+
+  if (!threadCache.has(threadId)) {
+    return sendJSON(res, 404, { error: "Thread not found or expired. Please search again." });
+  }
+
+  const threadData = threadCache.get(threadId);
+  let post = null;
+  let cur = 0;
+  for (const page of threadData.pages) {
+    for (const p of page.posts) {
+      if (cur === gidx) {
+        post = p;
+        break;
+      }
+      cur++;
+    }
+    if (post) break;
+  }
+
+  if (!post) return sendJSON(res, 404, { error: "Post not found in thread." });
+
+  const title = post.title || `Post #${gidx + 1}`;
+  try {
+    const result = await extractAndUpload(post.links, title, threadData.url, threadData.searchQuery || null);
+    if (result.ok) addToHistory(result);
+    sendJSON(res, 200, result);
+  } catch (err) {
     sendJSON(res, 500, { error: err.message });
   }
 }
@@ -472,6 +532,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/fetch/vg")   return await handleVgFetch(params, res);
     if (pathname === "/api/fetch/aps")  return await handleApsFetch(params, res);
     if (pathname === "/api/fetch/url")  return await handleDirectFetch(params, res);
+    if (pathname === "/api/fetch/thread-post") return await handleThreadExtract(params, res);
     if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
     if (pathname === "/api/imx/upload")  return await handleImxUpload(req, res);
     if (pathname === "/api/history")    return handleHistory(params, res);

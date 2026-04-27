@@ -55,8 +55,6 @@ function saveHistory(entries) {
 
 function addToHistory(entry) {
   const history = loadHistory();
-  // Avoid exact URL duplicates – replace if same sourceUrl exists
-  const idx = history.findIndex(h => h.sourceUrl === entry.sourceUrl);
   const record = {
     id: md5(entry.sourceUrl + Date.now()).slice(0, 8),
     timestamp: Date.now(),
@@ -71,11 +69,7 @@ function addToHistory(entry) {
     dlCommand: entry.dlCommand,
     previewUrls: entry.previewUrls || [],
   };
-  if (idx >= 0) {
-    history[idx] = record;
-  } else {
-    history.unshift(record);
-  }
+  history.unshift(record);
   saveHistory(history);
   return record;
 }

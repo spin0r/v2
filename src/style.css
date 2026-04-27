@@ -42,6 +42,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: rgba(255, 77, 28, 0.9);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(255, 77, 28, 0.9);
+  color: #fff;
+}
+
 /* ===== NOISE OVERLAY ===== */
 body::before {
   content: '';

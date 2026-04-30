@@ -547,7 +547,7 @@
           <span class="options-label">Styles</span>
           <button class="option-chip active" id="opt-space-dot" data-option="spaceToDot">
             <span class="chip-dot"></span>
-            Replace space with ·
+            Replace space with .
           </button>
         </div>
 
@@ -612,7 +612,7 @@
 
       if (options.spaceToDot) {
         const before = result;
-        result = result.replace(/ /g, '·');
+        result = result.replace(/ /g, '.');
         // Count how many spaces were replaced
         for (let i = 0; i < before.length; i++) {
           if (before[i] === ' ') replacements++;

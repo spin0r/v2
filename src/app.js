@@ -119,6 +119,7 @@ function svgIcon(name) {
     chevron_right: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
     copy: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
     external: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+    download: `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
     viper: `<img src="/icon.svg" style="width: 1em; height: 1em; background: white; border-radius: 50%;" alt="Viper">`,
   };
   return icons[name] || '';
@@ -309,6 +310,9 @@ function renderResults() {
         <span>results for "<strong>${state.query}</strong>"</span>
       </div>
       <div class="status-actions">
+        <button class="export-btn" id="export-btn" title="Export search results as JSON">
+          ${svgIcon('download')} Export
+        </button>
         <div class="pagination">
           <button class="icon-btn" id="prev-page" ${state.page<=1?'disabled':''}>${svgIcon('chevron_left')}</button>
           <span class="page-info">${state.page} / ${state.totalPages}</span>
@@ -710,6 +714,61 @@ async function copyText(text) {
   }
 }
 
+// ====== EXPORT ======
+async function exportSearchData() {
+  if (!state.results.length) {
+    toast('No results to export', 'error');
+    return;
+  }
+
+  const btn = appEl.querySelector('#export-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Exporting…'; }
+
+  const allResults = [];
+  const query = state.query;
+  const tab = state.tab;
+  const totalPages = state.totalPages;
+
+  try {
+    for (let p = 1; p <= totalPages; p++) {
+      toast(`Fetching page ${p}/${totalPages}…`, 'success');
+      const data = await apiSearch(tab, query, p);
+      const pageResults = (data.results || []).map(r => ({
+        title: r.title || '',
+        id: r.sgenId || r.apsId || '',
+        url: r.url || '',
+        prefix: r.prefix || '',
+        category: r.category || '',
+        date: r.timestamp ? formatDate(r.timestamp) : (r.dateText || ''),
+      }));
+      allResults.push(...pageResults);
+    }
+
+    const exportData = {
+      query,
+      tab,
+      totalResults: state.totalResults,
+      totalPages,
+      exportedAt: new Date().toISOString(),
+      results: allResults,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `viper-search-${query.replace(/[^a-z0-9]/gi, '_')}-all.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`Exported ${allResults.length} results (${totalPages} pages)`, 'success');
+  } catch (err) {
+    toast(`Export failed: ${err.message}`, 'error');
+  }
+
+  if (btn) { btn.disabled = false; btn.innerHTML = `${svgIcon('download')} Export`; }
+}
+
 // ====== BIND EVENTS ======
 function bindEvents() {
   // Nav switching
@@ -772,6 +831,10 @@ function bindEvents() {
   const next = appEl.querySelector('#next-page');
   if (prev) prev.addEventListener('click', () => doSearch(state.query, state.page - 1));
   if (next) next.addEventListener('click', () => doSearch(state.query, state.page + 1));
+
+  // Export button
+  const exportBtn = appEl.querySelector('#export-btn');
+  if (exportBtn) exportBtn.addEventListener('click', () => exportSearchData());
 
   // History Pagination
   const histPrev = appEl.querySelector('#hist-prev');

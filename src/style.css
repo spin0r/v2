@@ -74,11 +74,7 @@ body::before {
 }
 
 .glow-orb-1 {
-  width: 900px;
-  height: 900px;
-  background: radial-gradient(circle, rgba(255, 77, 28, 0.07) 0%, rgba(255, 77, 28, 0.03) 30%, transparent 60%);
-  top: -350px;
-  left: -350px;
+  display: none;
 }
 
 .glow-orb-2 {
@@ -474,6 +470,39 @@ main {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--sans);
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.export-btn:hover {
+  color: var(--text);
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+.export-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ===== PAGINATION ===== */

@@ -544,6 +544,18 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    // Serve text tool at /text
+    if (pathname === '/text' || pathname === '/text/') {
+      const fs = require('fs');
+      const path = require('path');
+      const textHtml = path.join(__dirname, 'text', 'index.html');
+      if (fs.existsSync(textHtml)) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        fs.createReadStream(textHtml).pipe(res);
+        return;
+      }
+    }
+
     // Serve static files from dist/ if it's not an API route
     if (!pathname.startsWith("/api")) {
       const fs = require('fs');

@@ -28,9 +28,42 @@ let state = {
   imxMode: 'upload',  // 'upload' | 'extract'
   imxLoading: false,
   imxResult: null,
+  // timers
+  searchStartTime: null,
+  searchElapsed: 0,
+  // concurrent fetch tracking: idx -> { extracted, total, phase }
+  fetchingCards: new Map(),
+  // completed fetch results: idx -> API result data
+  completedCards: new Map(),
+  // scraped thread data per card: idx -> { threadId, posts: [{title, count, gidx}] }
+  scrapedCards: new Map(),
+  // concurrent thread post tracking: gidx -> { extracted, total, phase }
+  fetchingThreadPosts: new Map(),
+  // completed thread post results: gidx -> API result data
+  completedThreadPosts: new Map(),
 };
 
 let appEl;
+let timerInterval = null;
+
+// ====== TIMER HELPERS ======
+function startTimerLoop() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    let needsUpdate = false;
+    // Search timer
+    if (state.searchStartTime) {
+      state.searchElapsed = ((Date.now() - state.searchStartTime) / 1000).toFixed(1);
+      const el = document.querySelector('#search-timer');
+      if (el) el.textContent = `${state.searchElapsed}s`;
+      needsUpdate = true;
+    }
+    if (!needsUpdate) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+  }, 100);
+}
 
 // ====== API ======
 const API = '/api';
@@ -45,6 +78,43 @@ async function apiSearch(tab, query, page = 1) {
 async function apiFetch(tab, id, query = '') {
   const endpoint = tab === 'vg' ? '/fetch/vg' : '/fetch/aps';
   const res = await fetch(`${API}${endpoint}?id=${id}&q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// Streaming version of apiFetch using SSE
+function apiFetchStream(tab, id, query = '', onProgress) {
+  return new Promise((resolve, reject) => {
+    const endpoint = tab === 'vg' ? '/fetch/vg' : '/fetch/aps';
+    const url = `${API}${endpoint}?id=${id}&q=${encodeURIComponent(query)}&stream=1`;
+    const es = new EventSource(url);
+    es.addEventListener('phase', (e) => {
+      try { const d = JSON.parse(e.data); if (onProgress) onProgress({ type: 'phase', ...d }); } catch {}
+    });
+    es.addEventListener('progress', (e) => {
+      try { const d = JSON.parse(e.data); if (onProgress) onProgress({ type: 'progress', ...d }); } catch {}
+    });
+    es.addEventListener('done', (e) => {
+      es.close();
+      try { resolve(JSON.parse(e.data)); } catch { reject(new Error('Invalid response')); }
+    });
+    es.addEventListener('error', (e) => {
+      es.close();
+      // Try to parse error data if available
+      if (e.data) {
+        try { const d = JSON.parse(e.data); reject(new Error(d.error || 'Stream error')); return; } catch {}
+      }
+      reject(new Error('Connection lost'));
+    });
+    es.onerror = () => {
+      es.close();
+      reject(new Error('Connection lost'));
+    };
+  });
+}
+
+async function apiScrapeVg(id, query = '') {
+  const res = await fetch(`${API}/scrape/vg?id=${id}&q=${encodeURIComponent(query)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -65,6 +135,35 @@ async function apiThreadPostExtract(threadId, postIndex) {
   const res = await fetch(`${API}/fetch/thread-post?threadId=${encodeURIComponent(threadId)}&postIndex=${postIndex}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+// Streaming version of apiThreadPostExtract using SSE
+function apiThreadPostExtractStream(threadId, postIndex, onProgress) {
+  return new Promise((resolve, reject) => {
+    const url = `${API}/fetch/thread-post?threadId=${encodeURIComponent(threadId)}&postIndex=${postIndex}&stream=1`;
+    const es = new EventSource(url);
+    es.addEventListener('phase', (e) => {
+      try { const d = JSON.parse(e.data); if (onProgress) onProgress({ type: 'phase', ...d }); } catch {}
+    });
+    es.addEventListener('progress', (e) => {
+      try { const d = JSON.parse(e.data); if (onProgress) onProgress({ type: 'progress', ...d }); } catch {}
+    });
+    es.addEventListener('done', (e) => {
+      es.close();
+      try { resolve(JSON.parse(e.data)); } catch { reject(new Error('Invalid response')); }
+    });
+    es.addEventListener('error', (e) => {
+      es.close();
+      if (e.data) {
+        try { const d = JSON.parse(e.data); reject(new Error(d.error || 'Stream error')); return; } catch {}
+      }
+      reject(new Error('Connection lost'));
+    });
+    es.onerror = () => {
+      es.close();
+      reject(new Error('Connection lost'));
+    };
+  });
 }
 
 async function apiImxExtract(text) {
@@ -172,7 +271,7 @@ function renderHero(skipAnim) {
         />
         <button class="search-btn" id="search-btn" ${state.loading?'disabled':''}>
           ${state.loading
-            ? '<div class="spinner"></div> Searching…'
+            ? `<div class="spinner"></div> Searching… <span id="search-timer" class="timer-badge">${state.searchElapsed || '0.0'}s</span>`
             : `${svgIcon('arrow_right')} Search`}
         </button>
       </div>
@@ -206,9 +305,103 @@ function renderCard(r, idx) {
   const idLabel = r.sgenId ? `/sgen${r.sgenId}` : (r.apsId ? `/aps${r.apsId}` : '');
   const prefixHtml = r.prefix ? `<span class="result-prefix">${r.prefix}</span>` : '';
   const delay = Math.min(idx * 40, 400);
+  const isFetching = state.fetchingCards.has(idx);
+  const fetchInfo = isFetching ? state.fetchingCards.get(idx) : null;
+  const isCompleted = state.completedCards.has(idx);
+  const completedData = isCompleted ? state.completedCards.get(idx) : null;
+  const isScraped = state.scrapedCards.has(idx);
+  const scrapedData = isScraped ? state.scrapedCards.get(idx) : null;
+
+  let actionsHtml;
+  if (isFetching) {
+    const phase = fetchInfo?.phase || 'scraping';
+    const progressText = phase === 'extracting'
+      ? `${fetchInfo?.extracted ?? 0}/${fetchInfo?.total ?? '?'}` 
+      : 'Scraping…';
+    actionsHtml = `
+      <div class="result-actions">
+        <div class="inline-progress">
+          <div class="spinner" style="width:14px;height:14px;border-width:2px"></div>
+          <span class="progress-label">${phase === 'extracting' ? 'Extracting' : 'Scraping…'}</span>
+          ${phase === 'extracting' ? `<span class="progress-counter" data-fetch-progress="${idx}">${progressText}</span>` : ''}
+        </div>
+      </div>`;
+  } else if (isCompleted) {
+    const ok = completedData?.ok;
+    actionsHtml = `
+      <div class="result-actions">
+        <button class="action-btn" data-open="${r.url}" title="Open thread">
+          ${svgIcon('external')}
+        </button>
+        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}" title="View result">
+          ${ok ? '✓' : '✗'} ${ok ? `${completedData.extracted}/${completedData.total}` : 'Failed'}
+        </button>
+      </div>`;
+  } else if (isScraped) {
+    // Show inline post picker
+    const postsHtml = scrapedData.posts.map((p, pi) => {
+      const postFetchInfo = state.fetchingCards.get(`${idx}-${pi}`);
+      const postCompleted = state.completedCards.get(`${idx}-${pi}`);
+      let postBtn;
+      if (postFetchInfo) {
+        const phase = postFetchInfo.phase || 'extracting';
+        const txt = phase === 'extracting' ? `${postFetchInfo.extracted ?? 0}/${postFetchInfo.total ?? '?'}` : 'Scraping…';
+        postBtn = `<div class="inline-progress" style="padding:3px 8px">
+          <div class="spinner" style="width:10px;height:10px;border-width:1.5px"></div>
+          <span class="progress-counter" data-fetch-progress="${idx}-${pi}" style="font-size:11px">${txt}</span>
+        </div>`;
+      } else if (postCompleted) {
+        const ok = postCompleted.ok;
+        postBtn = `<button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px">
+          ${ok ? '✓' : '✗'} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
+        </button>`;
+      } else {
+        postBtn = `<button class="action-btn primary inline-extract-btn" data-card-idx="${idx}" data-post-idx="${pi}" style="font-size:11px;padding:3px 10px">Extract</button>`;
+      }
+      return `<div class="post-pick-row">
+        <span class="post-pick-title" title="${p.title}">${p.title}</span>
+        <span class="post-pick-count">${p.count} img</span>
+        ${postBtn}
+      </div>`;
+    }).join('');
+    actionsHtml = '';
+    // We'll append the post picker after the card body
+    return `
+    <div class="result-card fade-in card-scraped" style="animation-delay:${delay}ms" data-idx="${idx}">
+      <span class="result-index">${(state.page-1)*20 + idx + 1}</span>
+      <div class="result-body">
+        <div class="result-title" title="${r.title}">${r.title}</div>
+        <div class="result-meta">
+          ${prefixHtml}
+          ${idLabel ? `<span class="result-id glitch" title="Click to copy" data-id="${idLabel}" style="cursor:pointer">${idLabel}</span>` : ''}
+          ${dateStr ? `<span class="result-date">${dateStr}</span>` : ''}
+          ${r.category ? `<span class="result-prefix">${r.category}</span>` : ''}
+        </div>
+        <div class="post-pick-list">
+          <div class="post-pick-header">Select post to extract</div>
+          ${postsHtml}
+        </div>
+      </div>
+      <div class="result-actions">
+        <button class="action-btn" data-open="${r.url}" title="Open thread">
+          ${svgIcon('external')}
+        </button>
+      </div>
+    </div>`;
+  } else {
+    actionsHtml = `
+      <div class="result-actions">
+        <button class="action-btn" data-open="${r.url}" title="Open thread">
+          ${svgIcon('external')}
+        </button>
+        <button class="action-btn primary" data-fetch-idx="${idx}" title="Get images">
+          Get images
+        </button>
+      </div>`;
+  }
 
   return `
-  <div class="result-card fade-in" style="animation-delay:${delay}ms" data-idx="${idx}">
+  <div class="result-card fade-in ${isFetching ? 'card-fetching' : ''} ${isCompleted ? (completedData?.ok ? 'card-done' : 'card-error') : ''}" style="animation-delay:${delay}ms" data-idx="${idx}">
     <span class="result-index">${(state.page-1)*20 + idx + 1}</span>
     <div class="result-body">
       <div class="result-title" title="${r.title}">${r.title}</div>
@@ -219,14 +412,7 @@ function renderCard(r, idx) {
         ${r.category ? `<span class="result-prefix">${r.category}</span>` : ''}
       </div>
     </div>
-    <div class="result-actions">
-      <button class="action-btn" data-open="${r.url}" title="Open thread">
-        ${svgIcon('external')}
-      </button>
-      <button class="action-btn primary" data-fetch-idx="${idx}" title="Get images">
-        Get images
-      </button>
-    </div>
+    ${actionsHtml}
   </div>`;
 }
 
@@ -336,19 +522,40 @@ function renderThreadView() {
 
   const postsHtml = pageData.posts.map((post, i) => {
     const gidx = globalStart + i;
-    const isExtracting = state.threadExtractingPost === gidx;
+    const isFetchingPost = state.fetchingThreadPosts.has(gidx);
+    const fetchInfo = isFetchingPost ? state.fetchingThreadPosts.get(gidx) : null;
+    const isCompletedPost = state.completedThreadPosts.has(gidx);
+    const completedPostData = isCompletedPost ? state.completedThreadPosts.get(gidx) : null;
     const delay = Math.min(i * 40, 400);
     // Page-relative display number
     const displayNum = gidx + 1;
 
-    const actionsHtml = isExtracting
-      ? `<div class="result-actions"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div></div>`
-      : `<div class="result-actions">
+    let actionsHtml;
+    if (isFetchingPost) {
+      const phase = fetchInfo?.phase || 'extracting';
+      const progressText = `${fetchInfo?.extracted ?? 0}/${fetchInfo?.total ?? '?'}`;
+      actionsHtml = `<div class="result-actions">
+        <div class="inline-progress">
+          <div class="spinner" style="width:14px;height:14px;border-width:2px"></div>
+          <span class="progress-label">Extracting</span>
+          <span class="progress-counter" data-thread-progress="${gidx}">${progressText}</span>
+        </div>
+      </div>`;
+    } else if (isCompletedPost) {
+      const ok = completedPostData?.ok;
+      actionsHtml = `<div class="result-actions">
+        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed-post="${gidx}" title="View result">
+          ${ok ? '✓' : '✗'} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : 'Failed'}
+        </button>
+      </div>`;
+    } else {
+      actionsHtml = `<div class="result-actions">
            <button class="action-btn primary extract-post-btn" data-gidx="${gidx}" title="Get images">Get images</button>
          </div>`;
+    }
 
     return `
-      <div class="result-card fade-in" style="animation-delay:${delay}ms">
+      <div class="result-card fade-in ${isFetchingPost ? 'card-fetching' : ''} ${isCompletedPost ? (completedPostData?.ok ? 'card-done' : 'card-error') : ''}" style="animation-delay:${delay}ms">
         <span class="result-index">${displayNum}</span>
         <div class="result-body">
           <div class="result-title">${post.title || `Post #${displayNum}`}</div>
@@ -665,6 +872,11 @@ async function doSearch(query, page = 1) {
     state.directFetchResult = null;
     state.threadData = null;
     state.threadExtractedPosts = {};
+    state.fetchingCards.clear();
+    state.completedCards.clear();
+    state.scrapedCards.clear();
+    state.fetchingThreadPosts.clear();
+    state.completedThreadPosts.clear();
     render();
     try {
       const data = await apiDirectFetch(query.trim());
@@ -687,7 +899,15 @@ async function doSearch(query, page = 1) {
   state.page = page;
   state.loading = true;
   state.results = [];
+  state.fetchingCards.clear();
+  state.completedCards.clear();
+  state.scrapedCards.clear();
+  state.fetchingThreadPosts.clear();
+  state.completedThreadPosts.clear();
+  state.searchStartTime = Date.now();
+  state.searchElapsed = '0.0';
   render();
+  startTimerLoop();
 
   try {
     const data = await apiSearch(state.tab, query, page);
@@ -695,9 +915,15 @@ async function doSearch(query, page = 1) {
     state.totalResults = data.total || state.results.length;
     state.totalPages = Math.max(1, Math.ceil(state.totalResults / 20));
     state.loading = false;
+    const elapsed = ((Date.now() - state.searchStartTime) / 1000).toFixed(1);
+    state.searchStartTime = null;
+    state.searchElapsed = 0;
     render();
+    toast(`Found ${state.totalResults} results in ${elapsed}s`, 'success');
   } catch (err) {
     state.loading = false;
+    state.searchStartTime = null;
+    state.searchElapsed = 0;
     state.results = [];
     render();
     toast(`Search failed: ${err.message}`, 'error');
@@ -797,6 +1023,11 @@ function bindEvents() {
       state.results = [];
       state.query = '';
       state.page = 1;
+      state.fetchingCards.clear();
+      state.completedCards.clear();
+      state.scrapedCards.clear();
+      state.fetchingThreadPosts.clear();
+      state.completedThreadPosts.clear();
       render();
     });
   });
@@ -868,33 +1099,173 @@ function bindEvents() {
     });
   });
 
-  // Fetch images buttons
+  // Fetch images buttons — non-blocking, concurrent, with SSE progress
   appEl.querySelectorAll('[data-fetch-idx]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.fetchIdx);
       const r = state.results[idx];
       if (!r) return;
+      // Already fetching this one? ignore
+      if (state.fetchingCards.has(idx)) return;
 
-      // Show loading modal immediately
-      state.modalData = { loading: true, loadingMsg: 'Scraping thread…', title: r.title };
+      // VG tab: scrape thread first → show post picker inline
+      if (state.tab === 'vg' && r.sgenId) {
+        state.fetchingCards.set(idx, { phase: 'scraping', extracted: 0, total: 0 });
+        render();
+        try {
+          const data = await apiScrapeVg(r.sgenId, state.query);
+          if (data.ok && data.threadData) {
+            // Flatten all posts across pages
+            const posts = [];
+            for (const page of data.threadData.pages) {
+              for (const p of page.posts) {
+                posts.push({ title: p.title || `Post #${posts.length + 1}`, count: p.count || p.links?.length || 0 });
+              }
+            }
+
+            if (posts.length === 1) {
+              // Only 1 post — extract directly, no picker needed
+              state.fetchingCards.set(idx, { phase: 'extracting', extracted: 0, total: posts[0].count });
+              render();
+              const result = await apiThreadPostExtractStream(data.threadId, 0, (progress) => {
+                const info = state.fetchingCards.get(idx);
+                if (!info) return;
+                if (progress.type === 'phase') {
+                  info.phase = progress.phase;
+                  if (progress.total) info.total = progress.total;
+                  render();
+                } else if (progress.type === 'progress') {
+                  info.extracted = progress.extracted;
+                  info.total = progress.total;
+                  const el = document.querySelector(`[data-fetch-progress="${idx}"]`);
+                  if (el) el.textContent = `${progress.extracted}/${progress.total}`;
+                }
+              });
+              state.fetchingCards.delete(idx);
+              const completed = {
+                ...result,
+                title: result.title || r.title,
+                sourceUrl: result.sourceUrl || r.url,
+              };
+              state.completedCards.set(idx, completed);
+              render();
+              toast(`✓ ${r.title?.slice(0, 40)} — ${result.extracted || 0}/${result.total || 0}`, 'success');
+            } else {
+              // Multiple posts — show picker
+              state.fetchingCards.delete(idx);
+              state.scrapedCards.set(idx, { threadId: data.threadId, posts });
+              render();
+              toast(`${posts.length} posts found — pick one to extract`, 'success');
+            }
+          } else {
+            state.fetchingCards.delete(idx);
+            toast('Failed to scrape thread', 'error');
+            render();
+          }
+        } catch (err) {
+          state.fetchingCards.delete(idx);
+          render();
+          toast(`Scrape failed: ${err.message}`, 'error');
+        }
+        return;
+      }
+
+      // APS tab (or fallback): extract directly with SSE progress
+      state.fetchingCards.set(idx, { phase: 'scraping', extracted: 0, total: 0 });
       render();
 
       try {
         const id = r.sgenId || r.apsId;
-        // Update loading message
-        state.modalData = { loading: true, loadingMsg: 'Extracting image URLs…', title: r.title };
-        render();
-        const data = await apiFetch(state.tab, id, state.query);
-        // Store full API result
-        state.modalData = {
+        const data = await apiFetchStream(state.tab, id, state.query, (progress) => {
+          const info = state.fetchingCards.get(idx);
+          if (!info) return;
+          if (progress.type === 'phase') {
+            info.phase = progress.phase;
+            if (progress.total) info.total = progress.total;
+            render();
+          } else if (progress.type === 'progress') {
+            info.extracted = progress.extracted;
+            info.total = progress.total;
+            const el = document.querySelector(`[data-fetch-progress="${idx}"]`);
+            if (el) el.textContent = `${progress.extracted}/${progress.total}`;
+          }
+        });
+        state.fetchingCards.delete(idx);
+        const result = {
           ...data,
           title: data.title || r.title,
           sourceUrl: data.sourceUrl || r.url,
         };
+        state.completedCards.set(idx, result);
         render();
+        toast(`✓ ${r.title?.slice(0, 40)} — ${data.extracted || 0}/${data.total || 0}`, 'success');
       } catch (err) {
-        state.modalData = { ok: false, error: err.message, title: r.title, sourceUrl: r.url };
+        state.fetchingCards.delete(idx);
+        state.completedCards.set(idx, { ok: false, error: err.message, title: r.title, sourceUrl: r.url });
+        render();
+        toast(`✗ ${r.title?.slice(0, 40)} — failed`, 'error');
+      }
+    });
+  });
+
+  // Inline post extract buttons (from scraped VG cards)
+  appEl.querySelectorAll('.inline-extract-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const cardIdx = parseInt(btn.dataset.cardIdx);
+      const postIdx = parseInt(btn.dataset.postIdx);
+      const scraped = state.scrapedCards.get(cardIdx);
+      if (!scraped) return;
+      const key = `${cardIdx}-${postIdx}`;
+      if (state.fetchingCards.has(key)) return;
+
+      state.fetchingCards.set(key, { phase: 'extracting', extracted: 0, total: 0 });
+      render();
+
+      try {
+        const data = await apiThreadPostExtractStream(scraped.threadId, postIdx, (progress) => {
+          const info = state.fetchingCards.get(key);
+          if (!info) return;
+          if (progress.type === 'phase') {
+            info.phase = progress.phase;
+            if (progress.total) info.total = progress.total;
+            render();
+          } else if (progress.type === 'progress') {
+            info.extracted = progress.extracted;
+            info.total = progress.total;
+            const el = document.querySelector(`[data-fetch-progress="${key}"]`);
+            if (el) el.textContent = `${progress.extracted}/${progress.total}`;
+          }
+        });
+        state.fetchingCards.delete(key);
+        const r = state.results[cardIdx];
+        const result = {
+          ...data,
+          title: data.title || scraped.posts[postIdx]?.title,
+          sourceUrl: data.sourceUrl || r?.url,
+        };
+        state.completedCards.set(key, result);
+        render();
+        toast(`✓ ${result.title?.slice(0, 40)} — ${data.extracted || 0}/${data.total || 0}`, 'success');
+      } catch (err) {
+        state.fetchingCards.delete(key);
+        state.completedCards.set(key, { ok: false, error: err.message, title: scraped.posts[postIdx]?.title });
+        render();
+        toast(`✗ Extract failed: ${err.message}`, 'error');
+      }
+    });
+  });
+
+  // View completed card results (supports both simple idx and composite idx-postIdx keys)
+  appEl.querySelectorAll('[data-view-completed]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const raw = btn.dataset.viewCompleted;
+      // Try composite key first (string like "2-0"), then integer
+      const result = state.completedCards.get(raw) || state.completedCards.get(parseInt(raw));
+      if (result) {
+        state.modalData = result;
         render();
       }
     });
@@ -948,11 +1319,13 @@ function bindEvents() {
     });
   }
 
-  // Thread view extract buttons — open result in the same modal as regular search
+  // Thread view extract buttons — non-blocking, concurrent
   appEl.querySelectorAll('.extract-post-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const gidx = parseInt(btn.dataset.gidx);
+      // Already fetching? ignore
+      if (state.fetchingThreadPosts.has(gidx)) return;
 
       // Find post title for modal header
       const d = state.threadData;
@@ -965,23 +1338,54 @@ function bindEvents() {
         }
       }
 
-      // Show loading modal
-      state.modalData = { loading: true, loadingMsg: 'Extracting images…', title: postTitle };
-      state.threadExtractingPost = gidx;
+      // Mark as fetching inline (no blocking modal)
+      state.fetchingThreadPosts.set(gidx, { phase: 'extracting', extracted: 0, total: 0 });
       render();
 
       try {
-        const data = await apiThreadPostExtract(state.threadId, gidx);
-        state.modalData = {
+        const data = await apiThreadPostExtractStream(state.threadId, gidx, (progress) => {
+          const info = state.fetchingThreadPosts.get(gidx);
+          if (!info) return;
+          if (progress.type === 'phase') {
+            info.phase = progress.phase;
+            if (progress.total) info.total = progress.total;
+            render();
+          } else if (progress.type === 'progress') {
+            info.extracted = progress.extracted;
+            info.total = progress.total;
+            const el = document.querySelector(`[data-thread-progress="${gidx}"]`);
+            if (el) el.textContent = `${progress.extracted}/${progress.total}`;
+          }
+        });
+        state.fetchingThreadPosts.delete(gidx);
+        // Store result on the card (don't auto-open modal)
+        const result = {
           ...data,
           title: data.title || postTitle,
           sourceUrl: data.sourceUrl || d.url,
         };
+        state.completedThreadPosts.set(gidx, result);
+        render();
+        toast(`✓ ${postTitle?.slice(0, 40)} — ${data.extracted || 0}/${data.total || 0}`, 'success');
       } catch (err) {
-        state.modalData = { ok: false, error: err.message, title: postTitle, sourceUrl: d.url };
+        state.fetchingThreadPosts.delete(gidx);
+        state.completedThreadPosts.set(gidx, { ok: false, error: err.message, title: postTitle, sourceUrl: d.url });
+        render();
+        toast(`✗ ${postTitle?.slice(0, 40)} — failed`, 'error');
       }
-      state.threadExtractingPost = null;
-      render();
+    });
+  });
+
+  // View completed thread post results
+  appEl.querySelectorAll('[data-view-completed-post]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const gidx = parseInt(btn.dataset.viewCompletedPost);
+      const result = state.completedThreadPosts.get(gidx);
+      if (result) {
+        state.modalData = result;
+        render();
+      }
     });
   });
 

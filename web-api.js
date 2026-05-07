@@ -94,6 +94,20 @@ function sendJSON(res, code, data) {
   res.end(body);
 }
 
+function startSSE(res) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+  });
+}
+
+function sendSSE(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
 function parseURL(url) {
   const u = new URL(url, "http://localhost");
   return { pathname: u.pathname, params: u.searchParams };
@@ -102,12 +116,13 @@ function parseURL(url) {
 // ────────────────────────────────────────────────────────────────────────────
 //  EXTRACT + UPLOAD  (mirrors bot's extractAndUpload)
 // ────────────────────────────────────────────────────────────────────────────
-async function extractAndUpload(links, title, sourceUrl, searchQuery) {
+async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress) {
   const extractor = new ImageHostExtractor();
   const total = links.length;
   const urlResults = {};
   const hostCounts = {};
   let completed = 0;
+  let extracted = 0;
 
   const chunks = [];
   for (let i = 0; i < links.length; i += CONCURRENCY)
@@ -134,6 +149,8 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery) {
         urlResults[r.value.i] = r.value.u;
     }
     completed += chunk.length;
+    extracted = Object.keys(urlResults).length;
+    if (onProgress) onProgress({ completed, extracted, total });
   }
 
   const directUrls = Object.keys(urlResults)
@@ -270,9 +287,9 @@ async function handleApsSearch(params, res) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-//  VG FETCH  (scrape thread + extract + upload)
+//  VG SCRAPE (scrape thread → return post list, no extraction)
 // ────────────────────────────────────────────────────────────────────────────
-async function handleVgFetch(params, res) {
+async function handleVgScrape(params, res) {
   const id = params.get("id") || "";
   const query = params.get("q") || "";
   if (!id) return sendJSON(res, 400, { error: "Missing id" });
@@ -285,12 +302,55 @@ async function handleVgFetch(params, res) {
   if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
 
   const downloader = new ViperGirlsDownloader();
+  const [pagesData, totalPages] = await downloader.scrapeThread(found.url);
+  const title = found.title || pagesData[0]?.posts[0]?.title || found.url;
+  const threadId = md5(found.url).slice(0, 8);
+
+  const threadData = { url: found.url, title, searchQuery: query || null, pages: pagesData, totalPages, type: 'vg' };
+  threadCache.set(threadId, threadData);
+
+  sendJSON(res, 200, { ok: true, threadId, threadData });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+//  VG FETCH  (scrape thread + extract + upload)
+// ────────────────────────────────────────────────────────────────────────────
+async function handleVgFetch(params, res) {
+  const id = params.get("id") || "";
+  const query = params.get("q") || "";
+  const stream = params.get("stream") === "1";
+  if (!id) return sendJSON(res, 400, { error: "Missing id" });
+
+  let found = null;
+  for (const results of vgCache.values()) {
+    found = results.find(r => r.sgenId === id);
+    if (found) break;
+  }
+  if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
+
+  if (stream) {
+    startSSE(res);
+    sendSSE(res, 'phase', { phase: 'scraping' });
+  }
+
+  const downloader = new ViperGirlsDownloader();
   const [pagesData] = await downloader.scrapeThread(found.url);
   const allLinks = pagesData.flatMap(p => p.posts.flatMap(q => q.links));
 
-  const result = await extractAndUpload(allLinks, found.title, found.url, query || null);
+  if (stream) {
+    sendSSE(res, 'phase', { phase: 'extracting', total: allLinks.length });
+  }
+
+  const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
+  const result = await extractAndUpload(allLinks, found.title, found.url, query || null, onProgress);
   if (result.ok) addToHistory(result);
-  sendJSON(res, 200, result);
+
+  if (stream) {
+    sendSSE(res, 'done', result);
+    res.end();
+  } else {
+    sendJSON(res, 200, result);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -299,6 +359,7 @@ async function handleVgFetch(params, res) {
 async function handleApsFetch(params, res) {
   const id = params.get("id") || "";
   const query = params.get("q") || "";
+  const stream = params.get("stream") === "1";
   if (!id) return sendJSON(res, 400, { error: "Missing id" });
 
   let found = null;
@@ -308,11 +369,28 @@ async function handleApsFetch(params, res) {
   }
   if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
 
+  if (stream) {
+    startSSE(res);
+    sendSSE(res, 'phase', { phase: 'scraping' });
+  }
+
   const scraper = new AdultPhotoSetsScraper();
   const links = await scraper.getPostLinks(found.url);
-  const result = await extractAndUpload(links, found.title, found.url, query || null);
+
+  if (stream) {
+    sendSSE(res, 'phase', { phase: 'extracting', total: links.length });
+  }
+
+  const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
+  const result = await extractAndUpload(links, found.title, found.url, query || null, onProgress);
   if (result.ok) addToHistory(result);
-  sendJSON(res, 200, result);
+
+  if (stream) {
+    sendSSE(res, 'done', result);
+    res.end();
+  } else {
+    sendJSON(res, 200, result);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -378,6 +456,7 @@ async function handleDirectFetch(params, res) {
 async function handleThreadExtract(params, res) {
   const threadId = params.get("threadId");
   const gidx = parseInt(params.get("postIndex") || "0");
+  const stream = params.get("stream") === "1";
   if (!threadId) return sendJSON(res, 400, { error: "Missing threadId" });
 
   if (!threadCache.has(threadId)) {
@@ -401,12 +480,30 @@ async function handleThreadExtract(params, res) {
   if (!post) return sendJSON(res, 404, { error: "Post not found in thread." });
 
   const title = post.title || `Post #${gidx + 1}`;
+
+  if (stream) {
+    startSSE(res);
+    sendSSE(res, 'phase', { phase: 'extracting', total: post.links.length });
+  }
+
   try {
-    const result = await extractAndUpload(post.links, title, threadData.url, threadData.searchQuery || null);
+    const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
+    const result = await extractAndUpload(post.links, title, threadData.url, threadData.searchQuery || null, onProgress);
     if (result.ok) addToHistory(result);
-    sendJSON(res, 200, result);
+
+    if (stream) {
+      sendSSE(res, 'done', result);
+      res.end();
+    } else {
+      sendJSON(res, 200, result);
+    }
   } catch (err) {
-    sendJSON(res, 500, { error: err.message });
+    if (stream) {
+      sendSSE(res, 'error', { error: err.message });
+      res.end();
+    } else {
+      sendJSON(res, 500, { error: err.message });
+    }
   }
 }
 
@@ -523,6 +620,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (pathname === "/api/search/vg")  return await handleVgSearch(params, res);
     if (pathname === "/api/search/aps") return await handleApsSearch(params, res);
+    if (pathname === "/api/scrape/vg")  return await handleVgScrape(params, res);
     if (pathname === "/api/fetch/vg")   return await handleVgFetch(params, res);
     if (pathname === "/api/fetch/aps")  return await handleApsFetch(params, res);
     if (pathname === "/api/fetch/url")  return await handleDirectFetch(params, res);

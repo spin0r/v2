@@ -849,7 +849,6 @@ function render() {
   // re-init scramble on new cards
   requestAnimationFrame(() => {
     initScramble(appEl);
-    initFadeIn(appEl);
     initAnimateLine(appEl);
   });
 }
@@ -1127,14 +1126,41 @@ function bindEvents() {
             if (posts.length === 1) {
               // Only 1 post — extract directly, no picker needed
               state.fetchingCards.set(idx, { phase: 'extracting', extracted: 0, total: posts[0].count });
-              render();
+              // Targeted DOM update: switch label from Scraping to Extracting + add counter
+              const card = document.querySelector(`[data-idx="${idx}"]`);
+              if (card) {
+                const label = card.querySelector('.progress-label');
+                if (label) label.textContent = 'Extracting';
+                const prog = card.querySelector('.inline-progress');
+                if (prog && !prog.querySelector('.progress-counter')) {
+                  const span = document.createElement('span');
+                  span.className = 'progress-counter';
+                  span.dataset.fetchProgress = String(idx);
+                  span.textContent = `0/${posts[0].count}`;
+                  prog.appendChild(span);
+                }
+              }
               const result = await apiThreadPostExtractStream(data.threadId, 0, (progress) => {
                 const info = state.fetchingCards.get(idx);
                 if (!info) return;
                 if (progress.type === 'phase') {
                   info.phase = progress.phase;
                   if (progress.total) info.total = progress.total;
-                  render();
+                  // Targeted DOM update instead of full render
+                  const card = document.querySelector(`[data-idx="${idx}"]`);
+                  if (card) {
+                    const label = card.querySelector('.progress-label');
+                    if (label) label.textContent = info.phase === 'extracting' ? 'Extracting' : 'Scraping…';
+                    // Show counter if transitioning to extracting
+                    const prog = card.querySelector('.inline-progress');
+                    if (prog && info.phase === 'extracting' && !prog.querySelector('.progress-counter')) {
+                      const span = document.createElement('span');
+                      span.className = 'progress-counter';
+                      span.dataset.fetchProgress = String(idx);
+                      span.textContent = `0/${info.total || '?'}`;
+                      prog.appendChild(span);
+                    }
+                  }
                 } else if (progress.type === 'progress') {
                   info.extracted = progress.extracted;
                   info.total = progress.total;
@@ -1183,7 +1209,20 @@ function bindEvents() {
           if (progress.type === 'phase') {
             info.phase = progress.phase;
             if (progress.total) info.total = progress.total;
-            render();
+            // Targeted DOM update instead of full render
+            const card = document.querySelector(`[data-idx="${idx}"]`);
+            if (card) {
+              const label = card.querySelector('.progress-label');
+              if (label) label.textContent = info.phase === 'extracting' ? 'Extracting' : 'Scraping…';
+              const prog = card.querySelector('.inline-progress');
+              if (prog && info.phase === 'extracting' && !prog.querySelector('.progress-counter')) {
+                const span = document.createElement('span');
+                span.className = 'progress-counter';
+                span.dataset.fetchProgress = String(idx);
+                span.textContent = `0/${info.total || '?'}`;
+                prog.appendChild(span);
+              }
+            }
           } else if (progress.type === 'progress') {
             info.extracted = progress.extracted;
             info.total = progress.total;
@@ -1230,7 +1269,9 @@ function bindEvents() {
           if (progress.type === 'phase') {
             info.phase = progress.phase;
             if (progress.total) info.total = progress.total;
-            render();
+            // Targeted DOM update instead of full render
+            const counter = document.querySelector(`[data-fetch-progress="${key}"]`);
+            if (counter) counter.textContent = `0/${info.total || '?'}`;
           } else if (progress.type === 'progress') {
             info.extracted = progress.extracted;
             info.total = progress.total;

@@ -562,9 +562,6 @@ main {
   transition: all var(--transition);
   position: relative;
   overflow: hidden;
-  opacity: 0;
-  transform: translateY(12px);
-  animation: cardIn 0.35s ease forwards;
 }
 
 .result-card:hover {
@@ -590,12 +587,7 @@ main {
   opacity: 1;
 }
 
-@keyframes cardIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+
 
 .result-index {
   font-size: 11px;

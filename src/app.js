@@ -328,13 +328,16 @@ function renderCard(r, idx) {
       </div>`;
   } else if (isCompleted) {
     const ok = completedData?.ok;
+    const errMsg = !ok ? (completedData?.error || 'Extraction failed') : '';
+    const isImgNotFound = errMsg.toLowerCase().includes('images not found') || errMsg.toLowerCase().includes('no image links');
     actionsHtml = `
       <div class="result-actions">
         <button class="action-btn" data-open="${r.url}" title="Open thread">
           ${svgIcon('external')}
         </button>
-        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}" title="View result">
-          ${ok ? '✓' : '✗'} ${ok ? `${completedData.extracted}/${completedData.total}` : 'Failed'}
+        ${!ok ? `<button class="action-btn retry-btn" data-retry-idx="${idx}" title="Retry extraction">↻ Retry</button>` : ''}
+        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}" title="${ok ? 'View result' : errMsg}">
+          ${ok ? '✓' : (isImgNotFound ? '🖼 Not found' : '✗ Error')} ${ok ? `${completedData.extracted}/${completedData.total}` : ''}
         </button>
       </div>`;
   } else if (isScraped) {
@@ -352,9 +355,14 @@ function renderCard(r, idx) {
         </div>`;
       } else if (postCompleted) {
         const ok = postCompleted.ok;
-        postBtn = `<button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px">
-          ${ok ? '✓' : '✗'} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
-        </button>`;
+        const pErrMsg = !ok ? (postCompleted.error || 'Failed') : '';
+        const pIsImgNotFound = pErrMsg.toLowerCase().includes('images not found') || pErrMsg.toLowerCase().includes('no image links');
+        postBtn = `<div style="display:flex;gap:4px;align-items:center">
+          ${!ok ? `<button class="action-btn retry-btn" data-retry-card-idx="${idx}" data-retry-post-idx="${pi}" style="font-size:11px;padding:3px 8px" title="Retry">↻</button>` : ''}
+          <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px" title="${ok ? '' : pErrMsg}">
+            ${ok ? '✓' : (pIsImgNotFound ? '🖼' : '✗')} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
+          </button>
+        </div>`;
       } else {
         postBtn = `<button class="action-btn primary inline-extract-btn" data-card-idx="${idx}" data-post-idx="${pi}" style="font-size:11px;padding:3px 10px">Extract</button>`;
       }
@@ -543,9 +551,12 @@ function renderThreadView() {
       </div>`;
     } else if (isCompletedPost) {
       const ok = completedPostData?.ok;
+      const tErrMsg = !ok ? (completedPostData?.error || 'Extraction failed') : '';
+      const tIsImgNotFound = tErrMsg.toLowerCase().includes('images not found') || tErrMsg.toLowerCase().includes('no image links');
       actionsHtml = `<div class="result-actions">
-        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed-post="${gidx}" title="View result">
-          ${ok ? '✓' : '✗'} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : 'Failed'}
+        ${!ok ? `<button class="action-btn retry-btn" data-retry-thread-gidx="${gidx}" title="Retry extraction">↻ Retry</button>` : ''}
+        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed-post="${gidx}" title="${ok ? 'View result' : tErrMsg}">
+          ${ok ? '✓' : (tIsImgNotFound ? '🖼 Not found' : '✗ Error')} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : ''}
         </button>
       </div>`;
     } else {
@@ -612,14 +623,16 @@ function renderModal() {
       ).join('')
     }</div>` : '';
 
+  const isImgNotFoundModal = (d.error || '').toLowerCase().includes('images not found') || (d.error || '').toLowerCase().includes('no image links');
   const statsHtml = d.ok ? `
     <div class="result-info-grid">
       <div class="info-row"><span class="info-key">Images</span><span class="info-val accent">${d.extracted}/${d.total}</span></div>
+      ${d.failed > 0 ? `<div class="info-row"><span class="info-key">Failed</span><span class="info-val" style="color:#f87171">${d.failed}</span></div>` : ''}
       <div class="info-row"><span class="info-key">Expires</span><span class="info-val">7 days</span></div>
       ${d.services ? `<div class="info-row"><span class="info-key">Service</span><span class="info-val">${d.services}</span></div>` : ''}
       <div class="info-row"><span class="info-key">Source</span><span class="info-val url-val" title="${d.sourceUrl}">${d.sourceUrl}</span></div>
       ${d.pasteUrl ? `<div class="info-row"><span class="info-key">Link</span><span class="info-val"><a class="paste-link" href="${d.pasteUrl}" target="_blank" rel="noopener">${d.pasteUrl}</a></span></div>` : ''}
-    </div>` : `<div class="error-msg">${d.error || 'Extraction failed'}</div>`;
+    </div>` : `<div class="error-msg">${isImgNotFoundModal ? '🖼️ ' : ''}${d.error || 'Extraction failed'}</div>`;
 
   return `
   <div class="modal-overlay open" id="modal-overlay">
@@ -1309,6 +1322,60 @@ function bindEvents() {
         state.modalData = result;
         render();
       }
+    });
+  });
+
+  // Retry buttons for failed search result cards
+  appEl.querySelectorAll('[data-retry-idx]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.retryIdx);
+      const r = state.results[idx];
+      if (!r) return;
+      // Clear completed error state
+      state.completedCards.delete(idx);
+      state.scrapedCards.delete(idx);
+      // Re-trigger the "Get images" click flow by simulating it
+      render();
+      // After render, find and click the new Get images button
+      requestAnimationFrame(() => {
+        const newBtn = appEl.querySelector(`[data-fetch-idx="${idx}"]`);
+        if (newBtn) newBtn.click();
+      });
+    });
+  });
+
+  // Retry buttons for inline post extractions
+  appEl.querySelectorAll('[data-retry-card-idx]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cardIdx = parseInt(btn.dataset.retryCardIdx);
+      const postIdx = parseInt(btn.dataset.retryPostIdx);
+      const key = `${cardIdx}-${postIdx}`;
+      // Clear completed error state
+      state.completedCards.delete(key);
+      render();
+      // After render, find and click the new Extract button
+      requestAnimationFrame(() => {
+        const newBtn = appEl.querySelector(`[data-card-idx="${cardIdx}"][data-post-idx="${postIdx}"]`);
+        if (newBtn) newBtn.click();
+      });
+    });
+  });
+
+  // Retry buttons for thread view posts
+  appEl.querySelectorAll('[data-retry-thread-gidx]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const gidx = parseInt(btn.dataset.retryThreadGidx);
+      // Clear completed error state
+      state.completedThreadPosts.delete(gidx);
+      render();
+      // After render, find and click the new Get images button
+      requestAnimationFrame(() => {
+        const newBtn = appEl.querySelector(`[data-gidx="${gidx}"]`);
+        if (newBtn) newBtn.click();
+      });
     });
   });
 

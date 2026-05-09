@@ -121,6 +121,7 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
   const total = links.length;
   const urlResults = {};
   const hostCounts = {};
+  const failedHosts = {};
   let completed = 0;
   let extracted = 0;
 
@@ -132,15 +133,22 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
     const results = await Promise.allSettled(
       chunk.map((link, ci) =>
         extractor.extractDirectUrl(link).then((u) => {
+          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
           if (u) {
-            for (const host of IMAGE_HOSTS) {
-              if (link.includes(host)) {
-                hostCounts[host] = (hostCounts[host] || 0) + 1;
-                break;
-              }
+            if (hostMatch) {
+              hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
             }
+          } else {
+            // Track failed extraction per host
+            failedHosts[hostName] = (failedHosts[hostName] || 0) + 1;
           }
           return { i: completed + ci, u };
+        }).catch(() => {
+          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
+          failedHosts[hostName] = (failedHosts[hostName] || 0) + 1;
+          return { i: completed + ci, u: null };
         })
       )
     );
@@ -166,13 +174,29 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
     })
     .join(", ");
 
+  const failedCount = total - directUrls.length;
+
   if (!directUrls.length) {
+    // Build a descriptive error
+    const failedDetail = Object.entries(failedHosts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([h, c]) => `${h}(${c})`)
+      .join(", ");
+    let errorMsg = "Images not found";
+    if (failedDetail) {
+      errorMsg = `Images not found — failed hosts: ${failedDetail}`;
+    }
+    if (total === 0) {
+      errorMsg = "No image links found in this post";
+    }
     return {
       ok: false,
-      error: "Could not extract any URLs",
+      error: errorMsg,
       title,
       sourceUrl,
       total,
+      failed: failedCount,
+      failedHosts,
       services,
       directUrls: [],
       pasteUrl: null,
@@ -196,6 +220,8 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
     sourceUrl,
     total,
     extracted: directUrls.length,
+    failed: failedCount,
+    failedHosts: failedCount > 0 ? failedHosts : undefined,
     services,
     directUrls,
     previewUrls: directUrls.slice(0, 5),

@@ -3,19 +3,17 @@
 const axios = require("axios");
 const FormData = require("form-data");
 
-async function uploadToPaste(content, expiryDays = 1, service = "pb") {
-  const url =
-    service === "pb"
-      ? "https://pb.dotrhelvetican.workers.dev"
-      : "https://shz.al";
-  try {
+const PASTE_URL = "https://pb.dotrhelvetican.workers.dev";
+
+async function uploadToPaste(content, expiryDays = 1) {
+  const attempt = async () => {
     const form = new FormData();
     form.append("c", Buffer.from(content, "utf-8"), {
       filename: "paste.txt",
       contentType: "text/plain",
     });
     form.append("e", `${expiryDays}d`);
-    const res = await axios.post(url, form, {
+    const res = await axios.post(PASTE_URL, form, {
       headers: form.getHeaders(),
       timeout: 60000,
     });
@@ -24,12 +22,21 @@ async function uploadToPaste(content, expiryDays = 1, service = "pb") {
         success: true,
         url: res.data.url,
         manageUrl: res.data.manageUrl,
-        service,
+        service: "pb",
       };
     }
-    return { success: false, error: String(res.data).slice(0, 100) };
+    throw new Error(String(res.data).slice(0, 100));
+  };
+
+  try {
+    return await attempt();
   } catch (e) {
-    return { success: false, error: e.message };
+    // Retry once on the same endpoint
+    try {
+      return await attempt();
+    } catch (e2) {
+      return { success: false, error: e2.message };
+    }
   }
 }
 

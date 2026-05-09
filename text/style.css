@@ -1,18 +1,18 @@
 /* ===== DESIGN SYSTEM (v2 tokens) ===== */
 :root {
-  --bg: #161718;
-  --bg-2: #1c1d1e;
-  --bg-3: #222324;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --border: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.16);
-  --accent: #ff4d1c;
-  --accent-2: #ff7a50;
-  --accent-glow: rgba(255, 77, 28, 0.25);
-  --text: #ffffff;
-  --text-2: rgba(255, 255, 255, 0.55);
-  --text-3: rgba(255, 255, 255, 0.3);
+  --bg: #14120b;
+  --bg-2: #1a1710;
+  --bg-3: #211e15;
+  --surface: rgba(237, 236, 228, 0.04);
+  --surface-hover: rgba(237, 236, 228, 0.07);
+  --border: rgba(237, 236, 228, 0.08);
+  --border-hover: rgba(237, 236, 228, 0.16);
+  --accent: #c08532;
+  --accent-2: #d4a04a;
+  --accent-glow: rgba(192, 133, 50, 0.25);
+  --text: #edecec;
+  --text-2: rgba(237, 236, 236, 0.55);
+  --text-3: rgba(237, 236, 236, 0.3);
   --mono: 'JetBrains Mono', monospace;
   --sans: 'Inter', sans-serif;
   --radius: 14px;
@@ -33,7 +33,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-::selection { background: rgba(255, 77, 28, 0.9); color: #fff; }
+::selection { background: rgba(192, 133, 50, 0.9); color: #fff; }
 
 /* Noise overlay */
 body::before {
@@ -58,7 +58,7 @@ body::before {
 .glow-orb-1 {
   width: 700px;
   height: 700px;
-  background: radial-gradient(circle, rgba(255, 122, 80, 0.05) 0%, rgba(255, 122, 80, 0.02) 30%, transparent 60%);
+  background: radial-gradient(circle, rgba(212, 160, 74, 0.05) 0%, rgba(212, 160, 74, 0.02) 30%, transparent 60%);
   bottom: -150px;
   right: -200px;
 }
@@ -79,7 +79,7 @@ nav {
   justify-content: space-between;
   padding: 20px 40px;
   border-bottom: 1px solid var(--border);
-  background: rgba(22, 23, 24, 0.85);
+  background: rgba(20, 18, 11, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   position: sticky;
@@ -109,8 +109,8 @@ nav {
   font-family: var(--mono);
   font-weight: 500;
   color: var(--accent);
-  background: rgba(255, 77, 28, 0.1);
-  border: 1px solid rgba(255, 77, 28, 0.2);
+  background: rgba(192, 133, 50, 0.1);
+  border: 1px solid rgba(192, 133, 50, 0.2);
   padding: 2px 8px;
   border-radius: var(--radius-pill);
   letter-spacing: 0.5px;
@@ -152,8 +152,8 @@ nav {
   font-family: var(--mono);
   font-weight: 500;
   color: var(--accent);
-  background: rgba(255, 77, 28, 0.08);
-  border: 1px solid rgba(255, 77, 28, 0.2);
+  background: rgba(192, 133, 50, 0.08);
+  border: 1px solid rgba(192, 133, 50, 0.2);
   padding: 5px 12px;
   border-radius: var(--radius-pill);
   letter-spacing: 1px;
@@ -269,8 +269,8 @@ main {
 
 .option-chip.active {
   color: var(--text);
-  background: rgba(255, 77, 28, 0.1);
-  border-color: rgba(255, 77, 28, 0.3);
+  background: rgba(192, 133, 50, 0.1);
+  border-color: rgba(192, 133, 50, 0.3);
 }
 
 .option-chip.active .chip-dot {
@@ -339,8 +339,8 @@ main {
 }
 
 .text-area:focus {
-  border-color: rgba(255, 77, 28, 0.4);
-  box-shadow: 0 0 0 3px rgba(255, 77, 28, 0.08), 0 0 40px rgba(255, 77, 28, 0.04);
+  border-color: rgba(192, 133, 50, 0.4);
+  box-shadow: 0 0 0 3px rgba(192, 133, 50, 0.08), 0 0 40px rgba(192, 133, 50, 0.04);
 }
 
 .text-area::placeholder {

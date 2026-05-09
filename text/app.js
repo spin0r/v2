@@ -45,12 +45,18 @@ const AI_SYSTEM_PROMPT = `You are a filename formatter. Convert scene descriptio
 Rules:
 - Format: Studio.YY.MM.DD.Performer.Firstname.Performer.Lastname.Scene.Title.Words
 - Extract the studio/channel name (remove @ symbol if present)
-- Reformat the date from YYYY-MM-DD to YY.MM.DD
+- Detect the date in ANY format and output it as YY.MM.DD:
+  - YYYY-MM-DD (e.g. 2025-05-08) → 25.05.08
+  - MM DD YY (e.g. 05 08 25) → 25.05.08  (month first, then day, then 2-digit year)
+  - MM-DD-YY → same logic
+  - MM.DD.YY → same logic
+  - The date is usually near the end of the input, often before a resolution like 1080p/720p/2160p
 - Extract performer name(s)
 - Extract the scene title, remove possessive artifacts like "s" that should be "'s", clean it up
 - Replace all spaces with dots
 - Remove any special characters except dots
 - Replace "&" with "and"
+- Remove resolution tags like 1080p, 720p, 2160p, 4k, etc.
 - Each word should be capitalized
 - Do NOT include file extension
 - If there are multiple lines, process each line separately and return each result on its own line
@@ -68,6 +74,12 @@ Output: Dogfart.InterracialBlowbang.24.01.15.Jenna.Foxx.First.Time
 
 Input: Luna Star -- @Brazzers -- Luna Gets Wild -- 2024-03-20
 Output: Brazzers.24.03.20.Luna.Star.Gets.Wild
+
+Input: ExploitedCollegeGirls Lilibet I Normally Don t Fuck Like This 05 08 25 1080p
+Output: ExploitedCollegeGirls.25.05.08.Lilibet.I.Normally.Dont.Fuck.Like.This
+
+Input: Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p
+Output: Vixen.24.03.15.Kendra.Sunderland.A.Perfect.Day
 
 Return ONLY the formatted filename(s), nothing else. No explanation, no markdown.`;
 

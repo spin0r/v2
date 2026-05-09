@@ -628,6 +628,11 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
     if (pathname === "/api/imx/upload")  return await handleImxUpload(req, res);
     if (pathname === "/api/history")    return handleHistory(params, res);
+    if (pathname === "/api/config") {
+      return sendJSON(res, 200, {
+        openrouterKey: process.env.OPENROUTER_API_KEY || '',
+      });
+    }
     if (pathname === "/api/health" || pathname === "/health") {
       const uptime = process.uptime();
       const d = Math.floor(uptime / 86400);
@@ -642,14 +647,22 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // Serve text tool at /text
+    // Serve text tool at /text (static files)
     if (pathname === '/text' || pathname === '/text/') {
-      const fs = require('fs');
-      const path = require('path');
       const textHtml = path.join(__dirname, 'text', 'index.html');
       if (fs.existsSync(textHtml)) {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         fs.createReadStream(textHtml).pipe(res);
+        return;
+      }
+    }
+    if (pathname.startsWith('/text/')) {
+      const filePath = path.join(__dirname, pathname);
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        const ext = path.extname(filePath);
+        const mimeTypes = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+        fs.createReadStream(filePath).pipe(res);
         return;
       }
     }

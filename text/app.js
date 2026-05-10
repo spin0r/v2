@@ -11,15 +11,30 @@ const inputCount = document.getElementById('input-count');
 const outputCount = document.getElementById('output-count');
 const replaceCount = document.getElementById('replace-count');
 
-// API key loaded from server .env
+// API key and prompt loaded from server
 let apiKey = '';
+let promptUrl = '';
+let AI_SYSTEM_PROMPT = '';
 
 (async () => {
   try {
     const res = await fetch('/api/config');
     const cfg = await res.json();
     if (cfg.openrouterKey) apiKey = cfg.openrouterKey;
-  } catch {}
+    if (cfg.promptUrl) {
+      promptUrl = cfg.promptUrl;
+      // Fetch the prompt from plainraw
+      const promptRes = await fetch(promptUrl);
+      if (promptRes.ok) {
+        AI_SYSTEM_PROMPT = await promptRes.text();
+        console.log('[AI] Prompt loaded from', promptUrl);
+      } else {
+        console.error('[AI] Failed to fetch prompt:', promptRes.status);
+      }
+    }
+  } catch (e) {
+    console.error('[AI] Config/prompt load error:', e.message);
+  }
 })();
 
 // ===== TRANSFORM =====
@@ -40,58 +55,13 @@ function transform(text) {
 }
 
 // ===== AI RENAME =====
-const AI_SYSTEM_PROMPT = `You are a filename formatter. Convert scene descriptions into standardized filenames.
-
-Rules:
-- Format: Studio.YY.MM.DD.Performer.Firstname.Performer.Lastname.Scene.Title.Words
-- Extract the studio/channel name (remove @ symbol if present)
-- Detect the date in ANY format and output it as YY.MM.DD:
-  - YYYY-MM-DD (e.g. 2025-05-08) → 25.05.08
-  - MM DD YY (e.g. 05 08 25) → 25.05.08  (month first, then day, then 2-digit year)
-  - MM-DD-YY → same logic
-  - MM.DD.YY → same logic
-  - The date is usually near the end of the input, often before a resolution like 1080p/720p/2160p
-- Extract performer name(s)
-- Extract the scene title, remove possessive artifacts like "s" that should be "'s", clean it up
-- Replace all spaces with dots
-- Replace hyphens (-) with dots — treat hyphens as word separators (e.g. "Tag-Teamed" → "Tag.Teamed")
-- Remove any special characters except dots
-- Replace "&" with "and"
-- Remove resolution tags like 1080p, 720p, 2160p, 4k, etc.
-- Each word should be capitalized (Title Case)
-- IMPORTANT: Preserve well-known uppercase acronyms exactly as-is. Do NOT title-case them. Examples: BBC, POV, DP, BTS, IR, MMF, FFM, BWC, BJ, ATM, MILF, PAWG, BBC, BDSM, JOI, PMV, VR, HD, HQ, MFM
-- Do NOT include file extension
-- If there are multiple lines, process each line separately and return each result on its own line
-- If the input is already partially dot-separated (e.g. "Blacked.26.04.13.Rissa.May Some Title"), preserve the existing dot-separated prefix and just fix the remaining part
-
-Network prefixes:
-- If the studio belongs to the Dogfart network, prepend "Dogfart." before the studio name.
-- Dogfart network sites: BlacksOnBlondes, CuckoldSessions, Gloryhole, DFXtraOriginals, DFXHomewreckers, CheatingWithMyEx, CougarSeductions, DFXHotwives, DFXBigBangz, InterracialPickups, DFXSolemates, BlackMeatWhiteFeet, BlacksOnCougars, Cumbang, GloryholeInitiations, InterracialBlowbang, WatchingMyDaughterGoBlack, WatchingMyMomGoBlack, WeFuckBlackGirls, ZebraGirls
-
-Examples:
-Input: Scarlett Alexis -- @BlacksOnBlondes -- Scarlett s Business Opportunity -- 2023-08-18
-Output: Dogfart.BlacksOnBlondes.23.08.18.Scarlett.Alexis.Business.Opportunity
-
-Input: Jenna Foxx -- @InterracialBlowbang -- Jenna s First Time -- 2024-01-15
-Output: Dogfart.InterracialBlowbang.24.01.15.Jenna.Foxx.First.Time
-
-Input: Luna Star -- @Brazzers -- Luna Gets Wild -- 2024-03-20
-Output: Brazzers.24.03.20.Luna.Star.Gets.Wild
-
-Input: ExploitedCollegeGirls Lilibet I Normally Don t Fuck Like This 05 08 25 1080p
-Output: ExploitedCollegeGirls.25.05.08.Lilibet.I.Normally.Dont.Fuck.Like.This
-
-Input: Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p
-Output: Vixen.24.03.15.Kendra.Sunderland.A.Perfect.Day
-
-Input: Blacked.26.04.13.Rissa.May Curvy Cutie Rissa Gets BBC Tag-Teamed
-Output: Blacked.26.04.13.Rissa.May.Curvy.Cutie.Rissa.Gets.BBC.Tag.Teamed
-
-Return ONLY the formatted filename(s), nothing else. No explanation, no markdown.`;
-
 async function aiRename(text) {
   if (!apiKey) {
     toast('No OpenRouter API key configured in .env', 'error');
+    return text;
+  }
+  if (!AI_SYSTEM_PROMPT) {
+    toast('AI prompt not loaded yet — try again in a moment', 'error');
     return text;
   }
   if (!text.trim()) return '';

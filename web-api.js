@@ -657,6 +657,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/config") {
       return sendJSON(res, 200, {
         openrouterKey: process.env.OPENROUTER_API_KEY || '',
+        promptUrl: process.env.PROMPT_URL || '',
       });
     }
     if (pathname === "/api/health" || pathname === "/health") {

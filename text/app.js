@@ -54,12 +54,15 @@ Rules:
 - Extract performer name(s)
 - Extract the scene title, remove possessive artifacts like "s" that should be "'s", clean it up
 - Replace all spaces with dots
+- Replace hyphens (-) with dots — treat hyphens as word separators (e.g. "Tag-Teamed" → "Tag.Teamed")
 - Remove any special characters except dots
 - Replace "&" with "and"
 - Remove resolution tags like 1080p, 720p, 2160p, 4k, etc.
-- Each word should be capitalized
+- Each word should be capitalized (Title Case)
+- IMPORTANT: Preserve well-known uppercase acronyms exactly as-is. Do NOT title-case them. Examples: BBC, POV, DP, BTS, IR, MMF, FFM, BWC, BJ, ATM, MILF, PAWG, BBC, BDSM, JOI, PMV, VR, HD, HQ, MFM
 - Do NOT include file extension
 - If there are multiple lines, process each line separately and return each result on its own line
+- If the input is already partially dot-separated (e.g. "Blacked.26.04.13.Rissa.May Some Title"), preserve the existing dot-separated prefix and just fix the remaining part
 
 Network prefixes:
 - If the studio belongs to the Dogfart network, prepend "Dogfart." before the studio name.
@@ -80,6 +83,9 @@ Output: ExploitedCollegeGirls.25.05.08.Lilibet.I.Normally.Dont.Fuck.Like.This
 
 Input: Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p
 Output: Vixen.24.03.15.Kendra.Sunderland.A.Perfect.Day
+
+Input: Blacked.26.04.13.Rissa.May Curvy Cutie Rissa Gets BBC Tag-Teamed
+Output: Blacked.26.04.13.Rissa.May.Curvy.Cutie.Rissa.Gets.BBC.Tag.Teamed
 
 Return ONLY the formatted filename(s), nothing else. No explanation, no markdown.`;
 

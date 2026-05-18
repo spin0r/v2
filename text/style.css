@@ -28,8 +28,8 @@ body {
   font-family: var(--sans);
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100vh;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -67,9 +67,10 @@ body::before {
 #app {
   position: relative;
   z-index: 1;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* ===== NAV ===== */
@@ -135,38 +136,41 @@ nav {
 .nav-links a:hover { color: var(--text); }
 .nav-links a.active { color: var(--text); }
 
-/* ===== HERO ===== */
+/* ===== HERO (compact) ===== */
 .hero {
-  padding: 80px 40px 48px;
+  padding: 16px 40px;
   max-width: 860px;
   margin: 0 auto;
   width: 100%;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
 }
 
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 10px;
   font-family: var(--mono);
   font-weight: 500;
   color: var(--accent);
   background: rgba(192, 133, 50, 0.08);
   border: 1px solid rgba(192, 133, 50, 0.2);
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: var(--radius-pill);
   letter-spacing: 1px;
   text-transform: uppercase;
-  margin-bottom: 24px;
+  flex-shrink: 0;
   opacity: 0;
-  animation: fadeSlideUp 0.6s ease forwards 0.1s;
+  animation: fadeSlideUp 0.4s ease forwards 0.1s;
 }
 
 .hero-eyebrow::before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: var(--accent);
   border-radius: 50%;
   animation: pulse 2s infinite;
@@ -178,14 +182,16 @@ nav {
 }
 
 .hero h1 {
-  font-size: clamp(36px, 6vw, 64px);
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -2px;
-  line-height: 1.05;
-  margin-bottom: 18px;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
   opacity: 0;
-  animation: fadeSlideUp 0.6s ease forwards 0.2s;
+  animation: fadeSlideUp 0.4s ease forwards 0.15s;
+  white-space: nowrap;
 }
+
+.hero h1 br { display: none; }
 
 .hero h1 span {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
@@ -195,17 +201,15 @@ nav {
 }
 
 .hero-sub {
-  font-size: 16px;
-  color: var(--text-2);
-  line-height: 1.6;
-  max-width: 500px;
-  margin: 0 auto;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.4;
   opacity: 0;
-  animation: fadeSlideUp 0.6s ease forwards 0.3s;
+  animation: fadeSlideUp 0.4s ease forwards 0.2s;
 }
 
 @keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -215,13 +219,20 @@ main {
   max-width: 860px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 40px 80px;
+  padding: 0 40px 16px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ===== TOOL PANEL ===== */
 .tool-panel {
   opacity: 0;
-  animation: fadeSlideUp 0.6s ease forwards 0.4s;
+  animation: fadeSlideUp 0.4s ease forwards 0.25s;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* ===== OPTIONS BAR ===== */
@@ -292,12 +303,15 @@ main {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  flex: 1;
+  min-height: 0;
 }
 
 .text-col {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  min-height: 0;
 }
 
 .text-col-header {
@@ -324,16 +338,17 @@ main {
 
 .text-area {
   width: 100%;
-  min-height: 280px;
+  flex: 1;
+  min-height: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px;
+  padding: 14px 16px;
   color: var(--text);
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.7;
-  resize: vertical;
+  resize: none;
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
@@ -363,8 +378,9 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
+  margin-top: 12px;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .action-bar-left {
@@ -567,12 +583,12 @@ main {
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 640px) {
-  nav { padding: 16px 20px; }
+  nav { padding: 12px 16px; }
   .nav-links { display: none; }
-  .hero { padding: 48px 20px 32px; }
-  main { padding: 0 20px 60px; }
+  .hero { padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
+  .hero-sub { display: none; }
+  main { padding: 0 16px 12px; }
   .text-grid {
     grid-template-columns: 1fr;
   }
-  .text-area { min-height: 180px; }
 }

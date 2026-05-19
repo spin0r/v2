@@ -280,6 +280,27 @@ class ViperGirlsDownloader {
             }
           }
         }
+
+        // Fallback 2: parse from "Today" or "Yesterday" relative dates
+        if (!timestamp) {
+          const normText = (titleAttr || labelText || "").replace(/[\s\u00a0]+/g, " ");
+          const relativeMatch = normText.match(/\b(today|yesterday)\b\s*(?:at\s*)?,?\s*(\d{1,2}):(\d{2})(?:\s*(am|pm))?/i);
+          if (relativeMatch) {
+            const [, dayWord, hour, minute, ampm] = relativeMatch;
+            const date = new Date();
+            if (dayWord.toLowerCase() === "yesterday") {
+              date.setDate(date.getDate() - 1);
+            }
+            let h = parseInt(hour);
+            if (ampm) {
+              const ampmLower = ampm.toLowerCase();
+              if (ampmLower === "pm" && h < 12) h += 12;
+              if (ampmLower === "am" && h === 12) h = 0;
+            }
+            date.setHours(h, parseInt(minute), 0, 0);
+            timestamp = Math.floor(date.getTime() / 1000);
+          }
+        }
       }
 
       results.push({

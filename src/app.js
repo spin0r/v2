@@ -65,6 +65,42 @@ function startTimerLoop() {
   }, 100);
 }
 
+// ====== CELEBRATION (confetti + sound) ======
+function playSuccessSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.15);
+    setTimeout(() => ctx.close(), 300);
+  } catch (e) { /* audio not supported */ }
+}
+
+function fireConfetti() {
+  if (typeof confetti !== 'function') return;
+  const end = Date.now() + 600;
+  (function frame() {
+    confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: ['#c08532', '#e6a84d', '#f0c674', '#4ade80'] });
+    confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: ['#c08532', '#e6a84d', '#f0c674', '#4ade80'] });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  }());
+}
+
+function celebrate() {
+  playSuccessSound();
+  fireConfetti();
+}
+
 // ====== API ======
 const API = '/api';
 
@@ -186,6 +222,15 @@ async function apiImxUpload(url) {
   return res.json();
 }
 
+async function apiReExtract(failedLinks, previousUrls, title, sourceUrl, searchQuery) {
+  const res = await fetch(`${API}/re-extract`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ failedLinks, previousUrls, title, sourceUrl, searchQuery }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
 
 // ====== TOAST ======
@@ -198,7 +243,7 @@ function toast(msg, type = 'success') {
   })();
   const t = document.createElement('div');
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${msg}</span>`;
+  t.innerHTML = `<span>${type === 'success' ? '✓' : '×'}</span><span>${msg}</span>`;
   container.appendChild(t);
   setTimeout(() => t.remove(), 3500);
 }
@@ -330,14 +375,15 @@ function renderCard(r, idx) {
     const ok = completedData?.ok;
     const errMsg = !ok ? (completedData?.error || 'Extraction failed') : '';
     const isImgNotFound = errMsg.toLowerCase().includes('images not found') || errMsg.toLowerCase().includes('no image links');
+    const hasFailedLinks = ok && completedData?.failedLinks && completedData.failedLinks.length > 0;
     actionsHtml = `
       <div class="result-actions">
         <button class="action-btn" data-open="${r.url}" title="Open thread">
           ${svgIcon('external')}
         </button>
         ${!ok ? `<button class="action-btn retry-btn" data-retry-idx="${idx}" title="Retry extraction">↻ Retry</button>` : ''}
-        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}" title="${ok ? 'View result' : errMsg}">
-          ${ok ? '✓' : (isImgNotFound ? '🖼 Not found' : '✗ Error')} ${ok ? `${completedData.extracted}/${completedData.total}` : ''}
+        <button class="action-btn ${ok ? (hasFailedLinks ? 'done-warn' : 'done') : 'done-error'}" data-view-completed="${idx}" title="${ok ? (hasFailedLinks ? `${completedData.failed} images failed — click to re-extract` : 'View result') : errMsg}">
+          ${ok ? '✓' : (isImgNotFound ? '× Not found' : '× Error')} ${ok ? `${completedData.extracted}/${completedData.total}` : ''}${hasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedData.failed} failed)</span>` : ''}
         </button>
       </div>`;
   } else if (isScraped) {
@@ -360,7 +406,7 @@ function renderCard(r, idx) {
         postBtn = `<div style="display:flex;gap:4px;align-items:center">
           ${!ok ? `<button class="action-btn retry-btn" data-retry-card-idx="${idx}" data-retry-post-idx="${pi}" style="font-size:11px;padding:3px 8px" title="Retry">↻</button>` : ''}
           <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px" title="${ok ? '' : pErrMsg}">
-            ${ok ? '✓' : (pIsImgNotFound ? '🖼' : '✗')} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
+            ${ok ? '✓' : (pIsImgNotFound ? '×' : '×')} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
           </button>
         </div>`;
       } else {
@@ -553,10 +599,11 @@ function renderThreadView() {
       const ok = completedPostData?.ok;
       const tErrMsg = !ok ? (completedPostData?.error || 'Extraction failed') : '';
       const tIsImgNotFound = tErrMsg.toLowerCase().includes('images not found') || tErrMsg.toLowerCase().includes('no image links');
+      const tHasFailedLinks = ok && completedPostData?.failedLinks && completedPostData.failedLinks.length > 0;
       actionsHtml = `<div class="result-actions">
         ${!ok ? `<button class="action-btn retry-btn" data-retry-thread-gidx="${gidx}" title="Retry extraction">↻ Retry</button>` : ''}
-        <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed-post="${gidx}" title="${ok ? 'View result' : tErrMsg}">
-          ${ok ? '✓' : (tIsImgNotFound ? '🖼 Not found' : '✗ Error')} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : ''}
+        <button class="action-btn ${ok ? (tHasFailedLinks ? 'done-warn' : 'done') : 'done-error'}" data-view-completed-post="${gidx}" title="${ok ? (tHasFailedLinks ? `${completedPostData.failed} failed — click to re-extract` : 'View result') : tErrMsg}">
+          ${ok ? '✓' : (tIsImgNotFound ? '× Not found' : '× Error')} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : ''}${tHasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedPostData.failed} failed)</span>` : ''}
         </button>
       </div>`;
     } else {
@@ -628,18 +675,19 @@ function renderModal() {
     <div class="result-info-grid">
       <div class="info-row"><span class="info-key">Images</span><span class="info-val accent">${d.extracted}/${d.total}</span></div>
       ${d.failed > 0 ? `<div class="info-row"><span class="info-key">Failed</span><span class="info-val" style="color:#f87171">${d.failed}</span></div>` : ''}
+      ${d.newlyRecovered > 0 ? `<div class="info-row"><span class="info-key">Recovered</span><span class="info-val" style="color:#34d399">+${d.newlyRecovered}</span></div>` : ''}
       <div class="info-row"><span class="info-key">Expires</span><span class="info-val">7 days</span></div>
       ${d.services ? `<div class="info-row"><span class="info-key">Service</span><span class="info-val">${d.services}</span></div>` : ''}
       <div class="info-row"><span class="info-key">Source</span><span class="info-val url-val" title="${d.sourceUrl}">${d.sourceUrl}</span></div>
       ${d.pasteUrl ? `<div class="info-row"><span class="info-key">Link</span><span class="info-val"><a class="paste-link" href="${d.pasteUrl}" target="_blank" rel="noopener">${d.pasteUrl}</a></span></div>` : ''}
-    </div>` : `<div class="error-msg">${isImgNotFoundModal ? '🖼️ ' : ''}${d.error || 'Extraction failed'}</div>`;
+    </div>` : `<div class="error-msg">${d.error || 'Extraction failed'}</div>`;
 
   return `
   <div class="modal-overlay open" id="modal-overlay">
     <div class="modal modal-wide">
       <div class="modal-header">
         <div class="modal-title-text">${d.title}</div>
-        <button class="modal-close" id="modal-close">✕</button>
+        <button class="modal-close" id="modal-close">×</button>
       </div>
 
       ${statsHtml}
@@ -651,6 +699,8 @@ function renderModal() {
       <div class="modal-actions" style="margin-top:16px">
         ${d.pasteUrl ? `<button class="action-btn" id="modal-copy-paste">${svgIcon('copy')} Copy Link</button>` : ''}
         ${d.sendCommand ? `<button class="action-btn" id="modal-copy-send">${svgIcon('copy')} Copy /send</button>` : ''}
+        ${d.ok && d.failedLinks && d.failedLinks.length > 0 ? `<button class="action-btn retry-btn" id="modal-reextract-failed" title="Retry ${d.failedLinks.length} failed extractions">↻ Re-extract Failed (${d.failedLinks.length})</button>` : ''}
+        ${d.ok ? `<button class="action-btn" id="modal-reextract-all" title="Re-extract all images from scratch" style="color:#a78bfa">↻ Re-extract All</button>` : ''}
         <button class="action-btn primary" id="modal-open" data-url="${d.sourceUrl}">
           ${svgIcon('external')} Open Thread
         </button>
@@ -932,6 +982,7 @@ async function doSearch(query, page = 1) {
     state.searchElapsed = 0;
     render();
     toast(`Found ${state.totalResults} results in ${elapsed}s`, 'success');
+    if (page === 1) celebrate();
   } catch (err) {
     state.loading = false;
     state.searchStartTime = null;
@@ -1508,6 +1559,97 @@ function bindEvents() {
 
   const modalOpen = appEl.querySelector('#modal-open');
   if (modalOpen) modalOpen.addEventListener('click', () => window.open(modalOpen.dataset.url, '_blank', 'noopener'));
+
+  // Re-extract Failed button — retries only the failed image links
+  const reextractFailedBtn = appEl.querySelector('#modal-reextract-failed');
+  if (reextractFailedBtn) reextractFailedBtn.addEventListener('click', async () => {
+    const d = state.modalData;
+    if (!d || !d.failedLinks || !d.failedLinks.length) return;
+    reextractFailedBtn.disabled = true;
+    reextractFailedBtn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Retrying…';
+    try {
+      const result = await apiReExtract(
+        d.failedLinks,
+        d.directUrls || [],
+        d.title,
+        d.sourceUrl,
+        d.hashtag ? d.hashtag.replace('#', '').replace(/_/g, ' ').trim() : ''
+      );
+      // Update modal with new result
+      state.modalData = { ...result, title: result.title || d.title, sourceUrl: result.sourceUrl || d.sourceUrl };
+      // Also update the completed card if it exists in any state map
+      for (const [key, val] of state.completedCards.entries()) {
+        if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+          state.completedCards.set(key, state.modalData);
+          break;
+        }
+      }
+      for (const [key, val] of state.completedThreadPosts.entries()) {
+        if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+          state.completedThreadPosts.set(key, state.modalData);
+          break;
+        }
+      }
+      render();
+      if (result.newlyRecovered > 0) {
+        toast(`✓ Recovered ${result.newlyRecovered} images! Now ${result.extracted}/${result.total}`, 'success');
+      } else {
+        toast(`No additional images recovered (${result.extracted}/${result.total})`, 'error');
+      }
+    } catch (err) {
+      toast(`Re-extract failed: ${err.message}`, 'error');
+      reextractFailedBtn.disabled = false;
+      reextractFailedBtn.innerHTML = '↻ Re-extract Failed';
+    }
+  });
+
+  // Re-extract All button — find the original card and re-trigger full extraction
+  const reextractAllBtn = appEl.querySelector('#modal-reextract-all');
+  if (reextractAllBtn) reextractAllBtn.addEventListener('click', () => {
+    const d = state.modalData;
+    if (!d) return;
+    state.modalData = null;
+
+    // Find which completed card/post this belongs to and retry it
+    for (const [key, val] of state.completedCards.entries()) {
+      if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+        state.completedCards.delete(key);
+        // If key is a string like "2-0", it's a post extraction
+        if (typeof key === 'string' && key.includes('-')) {
+          const [cardIdx, postIdx] = key.split('-').map(Number);
+          render();
+          requestAnimationFrame(() => {
+            const newBtn = appEl.querySelector(`[data-card-idx="${cardIdx}"][data-post-idx="${postIdx}"]`);
+            if (newBtn) newBtn.click();
+          });
+        } else {
+          // Simple card index
+          state.scrapedCards.delete(key);
+          render();
+          requestAnimationFrame(() => {
+            const newBtn = appEl.querySelector(`[data-fetch-idx="${key}"]`);
+            if (newBtn) newBtn.click();
+          });
+        }
+        return;
+      }
+    }
+    // Check thread posts
+    for (const [key, val] of state.completedThreadPosts.entries()) {
+      if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+        state.completedThreadPosts.delete(key);
+        render();
+        requestAnimationFrame(() => {
+          const newBtn = appEl.querySelector(`[data-gidx="${key}"]`);
+          if (newBtn) newBtn.click();
+        });
+        return;
+      }
+    }
+    // Fallback: just close modal
+    render();
+    toast('Could not find the original extraction to retry', 'error');
+  });
 
   // Copy command lines on click — unescape \n stored in data attribute into real newlines
   appEl.querySelectorAll('[data-copy-cmd]').forEach(el => {

@@ -122,9 +122,11 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
   const urlResults = {};
   const hostCounts = {};
   const failedHosts = {};
+  const failedLinks = [];  // Track which original links failed
   let completed = 0;
   let extracted = 0;
 
+  // ── PASS 1: Normal extraction ──
   const chunks = [];
   for (let i = 0; i < links.length; i += CONCURRENCY)
     chunks.push(links.slice(i, i + CONCURRENCY));
@@ -140,14 +142,11 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
               hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
             }
           } else {
-            // Track failed extraction per host
-            failedHosts[hostName] = (failedHosts[hostName] || 0) + 1;
+            failedLinks.push({ index: completed + ci, link });
           }
           return { i: completed + ci, u };
         }).catch(() => {
-          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
-          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
-          failedHosts[hostName] = (failedHosts[hostName] || 0) + 1;
+          failedLinks.push({ index: completed + ci, link: chunk[ci] });
           return { i: completed + ci, u: null };
         })
       )
@@ -159,6 +158,52 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
     completed += chunk.length;
     extracted = Object.keys(urlResults).length;
     if (onProgress) onProgress({ completed, extracted, total });
+  }
+
+  // ── PASS 2: Retry failed ones with fresh extractor, lower concurrency, longer timeout ──
+  if (failedLinks.length > 0 && failedLinks.length <= total) {
+    console.log(`[Extract] Pass 2: Retrying ${failedLinks.length}/${total} failed extractions`);
+    const retryExtractor = new ImageHostExtractor();
+    // Override timeout to 20s for retry pass
+    retryExtractor.client.defaults.timeout = 20000;
+    const RETRY_CONCURRENCY = 5;
+    const retryChunks = [];
+    for (let i = 0; i < failedLinks.length; i += RETRY_CONCURRENCY)
+      retryChunks.push(failedLinks.slice(i, i + RETRY_CONCURRENCY));
+
+    for (const chunk of retryChunks) {
+      const results = await Promise.allSettled(
+        chunk.map(({ index, link }) =>
+          retryExtractor.extractDirectUrl(link).then((u) => {
+            if (u) {
+              const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+              if (hostMatch) {
+                hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
+              }
+            }
+            return { i: index, u };
+          }).catch(() => ({ i: index, u: null }))
+        )
+      );
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.u)
+          urlResults[r.value.i] = r.value.u;
+      }
+      extracted = Object.keys(urlResults).length;
+      if (onProgress) onProgress({ completed: total, extracted, total });
+    }
+  }
+
+  // Rebuild failedLinks list after retry pass
+  const stillFailedLinks = failedLinks
+    .filter(f => !urlResults[f.index])
+    .map(f => f.link);
+
+  // Track host failures only for still-failed links
+  for (const link of stillFailedLinks) {
+    const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+    const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
+    failedHosts[hostName] = (failedHosts[hostName] || 0) + 1;
   }
 
   const directUrls = Object.keys(urlResults)
@@ -197,6 +242,7 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
       total,
       failed: failedCount,
       failedHosts,
+      failedLinks: stillFailedLinks,
       services,
       directUrls: [],
       pasteUrl: null,
@@ -222,6 +268,7 @@ async function extractAndUpload(links, title, sourceUrl, searchQuery, onProgress
     extracted: directUrls.length,
     failed: failedCount,
     failedHosts: failedCount > 0 ? failedHosts : undefined,
+    failedLinks: stillFailedLinks.length > 0 ? stillFailedLinks : undefined,
     services,
     directUrls,
     previewUrls: directUrls.slice(0, 5),
@@ -534,6 +581,124 @@ async function handleThreadExtract(params, res) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+//  RE-EXTRACT (retry only failed links, merge with previous successful URLs)
+// ────────────────────────────────────────────────────────────────────────────
+async function handleReExtract(req, res) {
+  const body = await readBody(req);
+  let parsed;
+  try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+
+  const { failedLinks, previousUrls, title, sourceUrl, searchQuery } = parsed;
+  if (!failedLinks || !failedLinks.length) {
+    return sendJSON(res, 400, { error: "No failed links to retry" });
+  }
+
+  const prevUrls = previousUrls || [];
+  console.log(`[Re-Extract] Retrying ${failedLinks.length} failed links (${prevUrls.length} previous OK)`);
+
+  const extractor = new ImageHostExtractor();
+  // Use longer timeout and lower concurrency for retries
+  extractor.client.defaults.timeout = 25000;
+  const RETRY_CONCURRENCY = 3;
+  const newUrls = [];
+  const stillFailed = [];
+  const hostCounts = {};
+  const failedHostsMap = {};
+
+  const chunks = [];
+  for (let i = 0; i < failedLinks.length; i += RETRY_CONCURRENCY)
+    chunks.push(failedLinks.slice(i, i + RETRY_CONCURRENCY));
+
+  for (const chunk of chunks) {
+    const results = await Promise.allSettled(
+      chunk.map(link =>
+        extractor.extractDirectUrl(link).then(u => {
+          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
+          if (u) {
+            if (hostMatch) hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
+          } else {
+            failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
+            stillFailed.push(link);
+          }
+          return { link, u };
+        }).catch(() => {
+          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
+          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
+          failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
+          stillFailed.push(link);
+          return { link, u: null };
+        })
+      )
+    );
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.u) newUrls.push(r.value.u);
+    }
+  }
+
+  // Merge previous URLs with newly extracted ones
+  const allUrls = [...prevUrls, ...newUrls];
+  const totalOriginal = prevUrls.length + failedLinks.length;
+
+  if (!allUrls.length) {
+    return sendJSON(res, 200, {
+      ok: false,
+      error: "All re-extraction attempts failed",
+      title: title || "",
+      sourceUrl: sourceUrl || "",
+      total: totalOriginal,
+      extracted: 0,
+      failed: totalOriginal,
+      failedLinks: stillFailed,
+      failedHosts: failedHostsMap,
+      directUrls: [],
+      pasteUrl: null,
+    });
+  }
+
+  // Upload merged results to paste
+  const content = allUrls.join("\n");
+  let result = await uploadToPaste(content, 7, "pb");
+  if (!result.success) result = await uploadToPaste(content, 7, "shz");
+
+  const services = Object.entries(hostCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([host, count]) => {
+      const shortName = host.split(".")[0];
+      return count > 1 ? `${shortName}(${count})` : shortName;
+    })
+    .join(", ");
+
+  let hashtag = "";
+  if (searchQuery) {
+    hashtag = "#" + searchQuery.toLowerCase().replace(/\s+/g, "_") + " ";
+  }
+
+  const finalResult = {
+    ok: result.success,
+    title: title || "",
+    sourceUrl: sourceUrl || "",
+    total: totalOriginal,
+    extracted: allUrls.length,
+    failed: stillFailed.length,
+    failedHosts: stillFailed.length > 0 ? failedHostsMap : undefined,
+    failedLinks: stillFailed.length > 0 ? stillFailed : undefined,
+    newlyRecovered: newUrls.length,
+    services,
+    directUrls: allUrls,
+    previewUrls: allUrls.slice(0, 5),
+    pasteUrl: result.success ? result.url : null,
+    pasteError: result.success ? null : result.error,
+    hashtag,
+    sendCommand: title ? `/send ${hashtag}${title}` : null,
+    dlCommand: result.success ? `/dl ${result.url}` : null,
+  };
+
+  if (finalResult.ok) addToHistory(finalResult);
+  sendJSON(res, 200, finalResult);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 //  IMX EXTRACT  (imx.to viewer links → direct URLs → paste)
 // ────────────────────────────────────────────────────────────────────────────
 async function handleImxExtract(req, res) {
@@ -651,6 +816,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/fetch/aps")  return await handleApsFetch(params, res);
     if (pathname === "/api/fetch/url")  return await handleDirectFetch(params, res);
     if (pathname === "/api/fetch/thread-post") return await handleThreadExtract(params, res);
+    if (pathname === "/api/re-extract" && req.method === "POST") return await handleReExtract(req, res);
     if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
     if (pathname === "/api/imx/upload")  return await handleImxUpload(req, res);
     if (pathname === "/api/history")    return handleHistory(params, res);

@@ -815,6 +815,22 @@ main {
   box-shadow: 0 4px 16px rgba(251, 191, 36, 0.12);
 }
 
+.action-btn.done-warn {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.25);
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+
+.action-btn.done-warn:hover {
+  background: rgba(251, 191, 36, 0.18);
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
 /* ===== POST PICKER (inline on scraped cards) ===== */
 .card-scraped {
   border-color: rgba(168, 85, 247, 0.2) !important;
@@ -1076,6 +1092,7 @@ main {
 .modal-actions {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .modal-actions .action-btn {

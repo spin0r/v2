@@ -795,6 +795,88 @@ function readBody(req) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+//  AI RENAME  (standalone API for filename formatting)
+// ────────────────────────────────────────────────────────────────────────────
+let cachedAiPrompt = null;
+
+async function getAiPrompt() {
+  if (cachedAiPrompt) return cachedAiPrompt;
+  const promptUrl = process.env.PROMPT_URL;
+  if (!promptUrl) throw new Error('PROMPT_URL not configured in .env');
+  const axios = require('axios');
+  const resp = await axios.get(promptUrl, { timeout: 10000 });
+  cachedAiPrompt = resp.data;
+  console.log('[AI Rename] System prompt loaded and cached');
+  return cachedAiPrompt;
+}
+
+async function handleAiRename(req, res) {
+  const body = await readBody(req);
+  let parsed;
+  try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: 'Invalid JSON' }); }
+
+  const text = (parsed.text || '').trim();
+  if (!text) return sendJSON(res, 400, { error: 'Missing "text" field' });
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return sendJSON(res, 500, { error: 'OPENROUTER_API_KEY not configured' });
+
+  let systemPrompt;
+  try {
+    systemPrompt = await getAiPrompt();
+  } catch (e) {
+    return sendJSON(res, 500, { error: `Failed to load AI prompt: ${e.message}` });
+  }
+
+  const FREE_MODELS = [
+    'google/gemini-2.5-flash-lite',      // $0.0000001/tok — basically free
+    'google/gemini-2.0-flash-001',        // $0.0000001/tok
+    'google/gemma-4-31b-it:free',         // free fallback
+    'meta-llama/llama-3.3-70b-instruct:free',
+  ];
+
+  const axios = require('axios');
+  let lastErr = '';
+
+  for (const model of FREE_MODELS) {
+    try {
+      console.log(`[AI Rename] Trying ${model}...`);
+      const response = await axios.post('https://openrouter.ai/api/v1/chat/completions', {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: text }
+        ],
+        temperature: 0.1,
+        max_tokens: 2048,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        timeout: 30000,
+      });
+
+      const result = response.data?.choices?.[0]?.message?.content?.trim() || '';
+      if (!result) continue; // try next model if empty
+
+      console.log(`[AI Rename] [${model}] "${text.substring(0, 50)}..." → "${result.substring(0, 50)}..."`);
+      return sendJSON(res, 200, { ok: true, result, model });
+    } catch (e) {
+      const errData = e.response?.data;
+      const code = errData?.error?.code || e.response?.status;
+      lastErr = errData?.error?.message || e.message;
+      console.warn(`[AI Rename] ${model} failed (${code}): ${lastErr}`);
+      if (code === 429 || code === 503) continue; // rate-limited or unavailable, try next
+      break; // other errors (auth, invalid request) won't be fixed by switching model
+    }
+  }
+
+  console.error('[AI Rename] All models failed. Last error:', lastErr);
+  sendJSON(res, 500, { error: `AI error: ${lastErr}` });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 //  HTTP SERVER
 // ────────────────────────────────────────────────────────────────────────────
 const server = http.createServer(async (req, res) => {
@@ -819,6 +901,7 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/re-extract" && req.method === "POST") return await handleReExtract(req, res);
     if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
     if (pathname === "/api/imx/upload")  return await handleImxUpload(req, res);
+    if (pathname === "/api/ai-rename" && req.method === "POST") return await handleAiRename(req, res);
     if (pathname === "/api/history")    return handleHistory(params, res);
     if (pathname === "/api/config") {
       return sendJSON(res, 200, {
@@ -838,6 +921,16 @@ const server = http.createServer(async (req, res) => {
         service: "running",
         uptime: `${d} days ${h} hours ${m} min ${s} s`
       });
+    }
+
+    // Serve API docs page at /api
+    if (pathname === '/api' || pathname === '/api/') {
+      const docsHtml = path.join(__dirname, 'api-docs.html');
+      if (fs.existsSync(docsHtml)) {
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        fs.createReadStream(docsHtml).pipe(res);
+        return;
+      }
     }
 
     // Serve text tool at /text (static files)

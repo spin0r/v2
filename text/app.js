@@ -11,31 +11,7 @@ const inputCount = document.getElementById('input-count');
 const outputCount = document.getElementById('output-count');
 const replaceCount = document.getElementById('replace-count');
 
-// API key and prompt loaded from server
-let apiKey = '';
-let promptUrl = '';
-let AI_SYSTEM_PROMPT = '';
-
-(async () => {
-  try {
-    const res = await fetch('/api/config');
-    const cfg = await res.json();
-    if (cfg.openrouterKey) apiKey = cfg.openrouterKey;
-    if (cfg.promptUrl) {
-      promptUrl = cfg.promptUrl;
-      // Fetch the prompt from plainraw
-      const promptRes = await fetch(promptUrl);
-      if (promptRes.ok) {
-        AI_SYSTEM_PROMPT = await promptRes.text();
-        console.log('[AI] Prompt loaded from', promptUrl);
-      } else {
-        console.error('[AI] Failed to fetch prompt:', promptRes.status);
-      }
-    }
-  } catch (e) {
-    console.error('[AI] Config/prompt load error:', e.message);
-  }
-})();
+// AI rename now uses server-side /api/ai-rename endpoint
 
 // ===== TRANSFORM =====
 function transform(text) {
@@ -56,45 +32,24 @@ function transform(text) {
 
 // ===== AI RENAME =====
 async function aiRename(text) {
-  if (!apiKey) {
-    toast('No OpenRouter API key configured in .env', 'error');
-    return text;
-  }
-  if (!AI_SYSTEM_PROMPT) {
-    toast('AI prompt not loaded yet — try again in a moment', 'error');
-    return text;
-  }
   if (!text.trim()) return '';
 
   try {
     document.querySelector('.tool-panel').classList.add('ai-processing');
     outputEl.value = 'Processing with AI…';
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/api/ai-rename', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
-        messages: [
-          { role: 'system', content: AI_SYSTEM_PROMPT },
-          { role: 'user', content: text }
-        ],
-        temperature: 0.1,
-        max_tokens: 2048,
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
     });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `API error ${res.status}`);
-    }
-
     const data = await res.json();
-    const result = data?.choices?.[0]?.message?.content?.trim() || '';
-    return result;
+    if (data.ok) {
+      return data.result;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
   } catch (e) {
     toast(`AI error: ${e.message}`, 'error');
     return text;

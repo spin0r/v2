@@ -262,11 +262,18 @@ function svgIcon(name) {
     chevron_left: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>`,
     chevron_right: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>`,
     copy: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
+    copy_all: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`,
     external: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
     download: `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
     viper: `<img src="/web.svg" style="width: 1em; height: 1em;" alt="Viper">`,
   };
   return icons[name] || '';
+}
+
+// Helper to build the copy-cmd text for a completed extraction result
+function getCmdText(result) {
+  if (!result || !result.ok) return '';
+  return [result.sendCommand, result.dlCommand].filter(Boolean).join('\n');
 }
 
 // ====== NAV ======
@@ -382,6 +389,7 @@ function renderCard(r, idx) {
           ${svgIcon('external')}
         </button>
         ${!ok ? `<button class="action-btn retry-btn" data-retry-idx="${idx}" title="Retry extraction">↻ Retry</button>` : ''}
+        ${ok && (completedData.sendCommand || completedData.dlCommand) ? `<button class="action-btn copy-cmd-btn" data-copy-card="${idx}" title="Copy commands">${svgIcon('copy')}</button>` : ''}
         <button class="action-btn ${ok ? (hasFailedLinks ? 'done-warn' : 'done') : 'done-error'}" data-view-completed="${idx}" title="${ok ? (hasFailedLinks ? `${completedData.failed} images failed — click to re-extract` : 'View result') : errMsg}">
           ${ok ? '✓' : (isImgNotFound ? '× Not found' : '× Error')} ${ok ? `${completedData.extracted}/${completedData.total}` : ''}${hasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedData.failed} failed)</span>` : ''}
         </button>
@@ -405,6 +413,7 @@ function renderCard(r, idx) {
         const pIsImgNotFound = pErrMsg.toLowerCase().includes('images not found') || pErrMsg.toLowerCase().includes('no image links');
         postBtn = `<div style="display:flex;gap:4px;align-items:center">
           ${!ok ? `<button class="action-btn retry-btn" data-retry-card-idx="${idx}" data-retry-post-idx="${pi}" style="font-size:11px;padding:3px 8px" title="Retry">↻</button>` : ''}
+          ${ok && (postCompleted.sendCommand || postCompleted.dlCommand) ? `<button class="action-btn copy-cmd-btn" data-copy-card="${idx}-${pi}" style="font-size:11px;padding:3px 8px" title="Copy commands">${svgIcon('copy')}</button>` : ''}
           <button class="action-btn ${ok ? 'done' : 'done-error'}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px" title="${ok ? '' : pErrMsg}">
             ${ok ? '✓' : (pIsImgNotFound ? '×' : '×')} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : 'Fail'}
           </button>
@@ -543,6 +552,10 @@ function renderResults() {
       </div>`;
   }
 
+  // Check if there are any completed extractions with commands to copy
+  const hasCompletedCmds = [...state.completedCards.values()].some(c => c.ok && (c.sendCommand || c.dlCommand)) ||
+    [...state.completedThreadPosts.values()].some(c => c.ok && (c.sendCommand || c.dlCommand));
+
   return `
     <div class="status-bar fade-in">
       <div class="status-info">
@@ -550,6 +563,9 @@ function renderResults() {
         <span>results for "<strong>${state.query}</strong>"</span>
       </div>
       <div class="status-actions">
+        ${hasCompletedCmds ? `<button class="export-btn" id="copy-all-btn" title="Copy all extracted commands">
+          ${svgIcon('copy_all')} Copy All
+        </button>` : ''}
         <button class="export-btn" id="export-btn" title="Export search results as JSON">
           ${svgIcon('download')} Export
         </button>
@@ -602,6 +618,7 @@ function renderThreadView() {
       const tHasFailedLinks = ok && completedPostData?.failedLinks && completedPostData.failedLinks.length > 0;
       actionsHtml = `<div class="result-actions">
         ${!ok ? `<button class="action-btn retry-btn" data-retry-thread-gidx="${gidx}" title="Retry extraction">↻ Retry</button>` : ''}
+        ${ok && (completedPostData.sendCommand || completedPostData.dlCommand) ? `<button class="action-btn copy-cmd-btn" data-copy-thread-post="${gidx}" title="Copy commands">${svgIcon('copy')}</button>` : ''}
         <button class="action-btn ${ok ? (tHasFailedLinks ? 'done-warn' : 'done') : 'done-error'}" data-view-completed-post="${gidx}" title="${ok ? (tHasFailedLinks ? `${completedPostData.failed} failed — click to re-extract` : 'View result') : tErrMsg}">
           ${ok ? '✓' : (tIsImgNotFound ? '× Not found' : '× Error')} ${ok ? `${completedPostData.extracted}/${completedPostData.total}` : ''}${tHasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedPostData.failed} failed)</span>` : ''}
         </button>
@@ -633,6 +650,9 @@ function renderThreadView() {
         <span>posts in thread &ldquo;<strong>${d.title}</strong>&rdquo;</span>
       </div>
       <div class="status-actions">
+        ${[...state.completedThreadPosts.values()].some(c => c.ok && (c.sendCommand || c.dlCommand)) ? `<button class="export-btn" id="copy-all-btn" title="Copy all extracted commands">
+          ${svgIcon('copy_all')} Copy All
+        </button>` : ''}
         <div class="pagination">
           <button class="icon-btn" id="thread-prev-page" ${state.threadPage <= 0 ? 'disabled' : ''}>${svgIcon('chevron_left')}</button>
           <span class="page-info">Page ${state.threadPage + 1} / ${d.totalPages}</span>
@@ -1003,6 +1023,26 @@ async function copyText(text) {
   }
 }
 
+// ====== COPY ALL CMD BLOCKS ======
+function copyAllCmdBlocks() {
+  const allTexts = [];
+  // Collect from completedCards
+  for (const [, result] of state.completedCards) {
+    const text = getCmdText(result);
+    if (text) allTexts.push(text);
+  }
+  // Collect from completedThreadPosts
+  for (const [, result] of state.completedThreadPosts) {
+    const text = getCmdText(result);
+    if (text) allTexts.push(text);
+  }
+  if (allTexts.length === 0) {
+    toast('No commands to copy', 'error');
+    return;
+  }
+  copyText(allTexts.join('\n\n'));
+}
+
 // ====== EXPORT ======
 async function exportSearchData() {
   if (!state.results.length) {
@@ -1129,6 +1169,10 @@ function bindEvents() {
   // Export button
   const exportBtn = appEl.querySelector('#export-btn');
   if (exportBtn) exportBtn.addEventListener('click', () => exportSearchData());
+
+  // Copy All button
+  const copyAllBtn = appEl.querySelector('#copy-all-btn');
+  if (copyAllBtn) copyAllBtn.addEventListener('click', () => copyAllCmdBlocks());
 
   // History Pagination
   const histPrev = appEl.querySelector('#hist-prev');
@@ -1373,6 +1417,30 @@ function bindEvents() {
         state.modalData = result;
         render();
       }
+    });
+  });
+
+  // Copy cmd buttons on completed cards (search results & inline posts)
+  appEl.querySelectorAll('[data-copy-card]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const raw = btn.dataset.copyCard;
+      const result = state.completedCards.get(raw) || state.completedCards.get(parseInt(raw));
+      const text = getCmdText(result);
+      if (text) copyText(text);
+      else toast('No commands to copy', 'error');
+    });
+  });
+
+  // Copy cmd buttons on completed thread posts
+  appEl.querySelectorAll('[data-copy-thread-post]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const gidx = parseInt(btn.dataset.copyThreadPost);
+      const result = state.completedThreadPosts.get(gidx);
+      const text = getCmdText(result);
+      if (text) copyText(text);
+      else toast('No commands to copy', 'error');
     });
   });
 

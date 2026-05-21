@@ -797,17 +797,13 @@ function readBody(req) {
 // ────────────────────────────────────────────────────────────────────────────
 //  AI RENAME  (standalone API for filename formatting)
 // ────────────────────────────────────────────────────────────────────────────
-let cachedAiPrompt = null;
-
 async function getAiPrompt() {
-  if (cachedAiPrompt) return cachedAiPrompt;
   const promptUrl = process.env.PROMPT_URL;
   if (!promptUrl) throw new Error('PROMPT_URL not configured in .env');
   const axios = require('axios');
   const resp = await axios.get(promptUrl, { timeout: 10000 });
-  cachedAiPrompt = resp.data;
-  console.log('[AI Rename] System prompt loaded and cached');
-  return cachedAiPrompt;
+  console.log('[AI Rename] System prompt fetched fresh');
+  return resp.data;
 }
 
 async function handleAiRename(req, res) {

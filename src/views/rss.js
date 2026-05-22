@@ -107,7 +107,6 @@ function renderRssCard(entry, idx) {
     actionsHtml = `
       <div class="result-actions">
         <button class="action-btn" data-open="${entry.link}" title="Open thread on Viper">${svgIcon('external')}</button>
-        <button class="action-btn rss-copy-title" data-rss-copy="${idx}" title="Copy title">${svgIcon('copy')}</button>
         ${entry.link ? `<button class="action-btn primary" data-rss-fetch="${idx}" title="Get images">Get images</button>` : ''}
       </div>`;
   }

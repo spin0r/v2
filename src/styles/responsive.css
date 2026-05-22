@@ -1,0 +1,49 @@
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  nav {
+    padding: 16px 20px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .hero {
+    padding: 48px 20px 40px;
+  }
+
+  main {
+    padding: 0 20px 60px;
+  }
+
+  .result-card {
+    flex-wrap: wrap;
+  }
+
+  .result-actions {
+    width: 100%;
+  }
+
+  .modal-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+

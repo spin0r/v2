@@ -1,0 +1,96 @@
+/* ===== DESIGN SYSTEM ===== */
+:root {
+  --bg: #14120b;
+  --bg-2: #1a1710;
+  --bg-3: #211e15;
+  --surface: rgba(237, 236, 228, 0.04);
+  --surface-hover: rgba(237, 236, 228, 0.07);
+  --border: rgba(237, 236, 228, 0.08);
+  --border-hover: rgba(237, 236, 228, 0.16);
+  --accent: #c08532;
+  --accent-2: #d4a04a;
+  --accent-glow: rgba(192, 133, 50, 0.25);
+  --text: #edecec;
+  --text-2: rgba(237, 236, 236, 0.55);
+  --text-3: rgba(237, 236, 236, 0.3);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(192, 133, 50, 0.9);
+  color: #fff;
+}
+
+::-moz-selection {
+  background: rgba(192, 133, 50, 0.9);
+  color: #fff;
+}
+
+/* ===== NOISE OVERLAY ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAAElBMVEUAAAAAAAAAAAAAAAAAAAAAAADgKxmiAAAABnRSTlMFBQUFBQWoay6DAAAASUlEQVQ4y2MQRgMMDCiBKIMoCkGhKIoqRBOE0MQxAFWRMIZCYQyFIugKhTEUCqMrFMZSKIylUBhLIYY5YugKMcwRw1CIMYcWAABFQi7MibxRjgAAAABJRU5ErkJggg==");
+  background-repeat: repeat;
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+}
+
+/* ===== AMBIENT GLOW ===== */
+.glow-orb {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-orb-1 {
+  display: none;
+}
+
+.glow-orb-2 {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(212, 160, 74, 0.05) 0%, rgba(212, 160, 74, 0.02) 30%, transparent 60%);
+  bottom: -150px;
+  right: -200px;
+}
+
+/* ===== LAYOUT ===== */
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+

@@ -1,0 +1,77 @@
+/* ===== IMX TAB ===== */
+.imx-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: border-color var(--transition);
+}
+
+.imx-form:focus-within {
+  border-color: rgba(192, 133, 50, 0.3);
+}
+
+.imx-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  letter-spacing: 0.3px;
+}
+
+.imx-textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.imx-textarea:focus {
+  border-color: rgba(192, 133, 50, 0.4);
+  box-shadow: 0 0 0 3px rgba(192, 133, 50, 0.08);
+}
+
+.imx-textarea::placeholder {
+  color: var(--text-3);
+}
+
+.imx-url-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.imx-url-input:focus {
+  border-color: rgba(192, 133, 50, 0.4);
+  box-shadow: 0 0 0 3px rgba(192, 133, 50, 0.08);
+}
+
+.imx-url-input::placeholder {
+  color: var(--text-3);
+}
+
+.imx-result {
+  margin-top: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+

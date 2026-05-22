@@ -131,6 +131,6 @@ export function startTimerLoop(state) {
 
 // ====== URL DETECTION ======
 export function isThreadUrl(str) {
-  return /^https?:\/\/(www\.)?vipergirls\.to\/(threads|showpost\.php)/i.test(str) ||
+  return /^https?:\/\/(www\.)?(vipergirls\.to|viper\.to)\/(threads|showpost\.php)/i.test(str) ||
          /^https?:\/\/(www\.)?adultphotosets\.com\/.+/i.test(str);
 }

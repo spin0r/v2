@@ -147,6 +147,7 @@ export function render() {
       <div class="glow-orb glow-orb-2"></div>
       ${renderNav()}
       ${renderRssView(skipAnim)}
+      ${renderModal()}
     `;
   } else if (state.view === 'imx') {
     appEl.innerHTML = `

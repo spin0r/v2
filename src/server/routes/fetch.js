@@ -141,14 +141,13 @@ async function handleDirectFetch(params, res) {
   if (!url) return sendJSON(res, 400, { error: "Missing url" });
 
   try {
-    if (url.includes("vipergirls.to")) {
+    if (url.includes("vipergirls.to") || url.includes("viper.to")) {
       const downloader = new ViperGirlsDownloader();
       const [pagesData, totalPages] = await downloader.scrapeThread(url);
       const title = pagesData[0]?.posts[0]?.title || url;
       const threadId = md5(url).slice(0, 8);
-      const searchQuery = slugToQuery(url);
 
-      const threadData = { url, title, searchQuery, pages: pagesData, totalPages, type: 'vg' };
+      const threadData = { url, title, searchQuery: null, pages: pagesData, totalPages, type: 'vg' };
       threadCache.set(threadId, threadData);
 
       return sendJSON(res, 200, { ok: true, threadId, threadData });
@@ -160,15 +159,14 @@ async function handleDirectFetch(params, res) {
       const titleMatch = url.match(/\/([^/]+)\/?$/);
       const title = titleMatch ? titleMatch[1].replace(/-/g, ' ') : url;
       const threadId = md5(url).slice(0, 8);
-      const searchQuery = slugToQuery(url);
 
-      const threadData = { url, title, searchQuery, pages: [{ page_num: 1, posts: [{ title: 'Main Post', links, count: links.length }] }], totalPages: 1, type: 'aps' };
+      const threadData = { url, title, searchQuery: null, pages: [{ page_num: 1, posts: [{ title: 'Main Post', links, count: links.length }] }], totalPages: 1, type: 'aps' };
       threadCache.set(threadId, threadData);
 
       return sendJSON(res, 200, { ok: true, threadId, threadData });
     }
 
-    sendJSON(res, 400, { error: "URL must be from vipergirls.to or adultphotosets" });
+    sendJSON(res, 400, { error: "URL must be from vipergirls.to / viper.to or adultphotosets" });
   } catch (err) {
     console.error("[Direct Fetch Error]", err.message);
     sendJSON(res, 500, { error: err.message });

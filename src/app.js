@@ -1,7 +1,7 @@
 
 // ====== STATE ======
 let state = {
-  view: 'search',  // 'search' | 'history' | 'imx'
+  view: 'search',  // 'search' | 'history' | 'imx' | 'rss'
   tab: 'vg',       // 'vg' | 'aps'
   query: '',
   loading: false,
@@ -41,6 +41,12 @@ let state = {
   fetchingThreadPosts: new Map(),
   // completed thread post results: gidx -> API result data
   completedThreadPosts: new Map(),
+  // rss
+  rssLoading: false,
+  rssEntries: [],
+  rssFeedTitle: '',
+  rssFeedUpdated: '',
+  rssError: null,
 };
 
 let appEl;
@@ -291,6 +297,7 @@ function renderNav() {
       <li><a class="animate-line ${isSearch?'active':''}" id="nav-search" style="cursor:pointer">Search</a></li>
       <li><a class="animate-line ${state.view==='imx'?'active':''}" id="nav-imx" style="cursor:pointer">IMX</a></li>
       <li><a class="animate-line ${isHistory?'active':''}" id="nav-history" style="cursor:pointer">History</a></li>
+      <li><a class="animate-line ${state.view==='rss'?'active':''}" id="nav-rss" style="cursor:pointer">RSS</a></li>
       <li><a class="animate-line" id="nav-docs" href="https://viper.to" target="_blank" rel="noopener">ViperGirls</a></li>
       <li><a class="animate-line" id="nav-aps" href="https://adultphotosets.best" target="_blank" rel="noopener">APS</a></li>
     </ul>
@@ -894,6 +901,124 @@ function renderImxView(skipAnim) {
   return header + `<main>${body}${resultHtml}</main>`;
 }
 
+// ====== RSS VIEW ======
+function formatRssDate(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  if (isNaN(d)) return isoStr;
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  let rel;
+  if (diffMins < 1) rel = 'Just now';
+  else if (diffMins < 60) rel = `${diffMins}m ago`;
+  else if (diffHours < 24) rel = `${diffHours}h ago`;
+  else if (diffDays < 7) rel = `${diffDays}d ago`;
+  else rel = '';
+  const pad = n => String(n).padStart(2, '0');
+  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000 + d.getTimezoneOffset() * 60000));
+  const date = `${pad(ist.getDate())}/${pad(ist.getMonth()+1)}/${ist.getFullYear()} ${pad(ist.getHours())}:${pad(ist.getMinutes())} IST`;
+  return rel ? `${rel} · ${date}` : date;
+}
+
+function renderRssCard(entry, idx) {
+  const delay = Math.min(idx * 30, 500);
+  const prefixBadge = entry.prefix
+    ? `<span class="rss-studio-badge">${entry.prefix}</span>`
+    : '';
+  const dateStr = entry.dateText || '';
+
+  return `
+  <div class="result-card rss-card fade-in" style="animation-delay:${delay}ms" data-rss-idx="${idx}">
+    <span class="result-index">${idx + 1}</span>
+    <div class="result-body">
+      <div class="result-title" title="${entry.title}">${entry.title}</div>
+      <div class="result-meta">
+        ${prefixBadge}
+        ${dateStr ? `<span class="result-date">${dateStr}</span>` : ''}
+      </div>
+    </div>
+    <div class="result-actions">
+      ${entry.link ? `<button class="action-btn" data-open="${entry.link}" title="Open thread on Viper">${svgIcon('external')}</button>` : ''}
+      <button class="action-btn rss-copy-title" data-rss-copy="${idx}" title="Copy title">${svgIcon('copy')}</button>
+    </div>
+  </div>`;
+}
+
+function renderRssView(skipAnim) {
+  const header = `
+  <section class="hero ${skipAnim ? 'skip-anim' : ''}" style="padding-bottom:40px">
+    <div class="hero-eyebrow">Live feed</div>
+    <h1>Latest<br><span>Releases</span></h1>
+    <p class="hero-sub">Real-time RSS feed from Viper forums — newest photo set threads, auto-refreshed.</p>
+    ${state.rssFeedUpdated ? `<div class="rss-updated-badge">Updated ${formatRssDate(state.rssFeedUpdated)}</div>` : ''}
+  </section>`;
+
+  let body;
+  if (state.rssLoading) {
+    body = `<div class="results-list">${renderSkeleton()}</div>`;
+  } else if (state.rssError) {
+    body = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <h3>Feed Error</h3>
+        <p>${state.rssError}</p>
+        <button class="action-btn primary" id="rss-retry" style="margin-top:16px">↻ Retry</button>
+      </div>`;
+  } else if (!state.rssEntries.length) {
+    body = `
+      <div class="empty-state">
+        <div class="icon">📡</div>
+        <h3>No entries</h3>
+        <p>The feed returned no entries. Try refreshing.</p>
+        <button class="action-btn primary" id="rss-retry" style="margin-top:16px">↻ Refresh</button>
+      </div>`;
+  } else {
+    body = `
+      <div class="status-bar fade-in">
+        <div class="status-info">
+          <span class="status-count">${state.rssEntries.length}</span>
+          <span>entries from "<strong>${state.rssFeedTitle}</strong>"</span>
+        </div>
+        <div class="status-actions">
+          <button class="export-btn" id="rss-refresh" title="Refresh feed">
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+      <div class="results-list">
+        ${state.rssEntries.map((e, i) => renderRssCard(e, i)).join('')}
+      </div>`;
+  }
+
+  return header + `<main>${body}</main>`;
+}
+
+async function fetchRssFeed() {
+  state.rssLoading = true;
+  state.rssError = null;
+  render();
+  try {
+    const res = await fetch(`${API}/rss`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data.ok) {
+      state.rssEntries = data.entries || [];
+      state.rssFeedTitle = data.feedTitle || 'RSS Feed';
+      state.rssFeedUpdated = data.feedUpdated || '';
+    } else {
+      throw new Error(data.error || 'Failed to load feed');
+    }
+  } catch (err) {
+    state.rssError = err.message;
+    state.rssEntries = [];
+  }
+  state.rssLoading = false;
+  render();
+}
+
 let lastView = null;
 
 // ====== FULL RENDER ======
@@ -902,7 +1027,14 @@ function render() {
   const skipAnim = lastView === state.view;
   lastView = state.view;
 
-  if (state.view === 'imx') {
+  if (state.view === 'rss') {
+    appEl.innerHTML = `
+      <div class="glow-orb glow-orb-1"></div>
+      <div class="glow-orb glow-orb-2"></div>
+      ${renderNav()}
+      ${renderRssView(skipAnim)}
+    `;
+  } else if (state.view === 'imx') {
     appEl.innerHTML = `
       <div class="glow-orb glow-orb-1"></div>
       <div class="glow-orb glow-orb-2"></div>
@@ -1113,6 +1245,16 @@ function bindEvents() {
     }
   });
 
+  // RSS nav
+  const navRss = appEl.querySelector('#nav-rss');
+  if (navRss) navRss.addEventListener('click', () => {
+    if (state.view !== 'rss') {
+      state.view = 'rss';
+      if (!state.rssEntries.length && !state.rssLoading) fetchRssFeed();
+      else render();
+    }
+  });
+
   // IMX nav
   const navImx = appEl.querySelector('#nav-imx');
   if (navImx) navImx.addEventListener('click', () => {
@@ -1179,6 +1321,21 @@ function bindEvents() {
   const histNext = appEl.querySelector('#hist-next');
   if (histPrev) histPrev.addEventListener('click', () => fetchHistory(state.historyPage - 1));
   if (histNext) histNext.addEventListener('click', () => fetchHistory(state.historyPage + 1));
+
+  // RSS events
+  const rssRetry = appEl.querySelector('#rss-retry');
+  if (rssRetry) rssRetry.addEventListener('click', () => fetchRssFeed());
+  const rssRefresh = appEl.querySelector('#rss-refresh');
+  if (rssRefresh) rssRefresh.addEventListener('click', () => fetchRssFeed());
+  // RSS copy title buttons
+  appEl.querySelectorAll('.rss-copy-title').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.rssCopy);
+      const entry = state.rssEntries[idx];
+      if (entry) copyText(entry.title);
+    });
+  });
 
   // History view buttons
   appEl.querySelectorAll('[data-hview]').forEach(btn => {

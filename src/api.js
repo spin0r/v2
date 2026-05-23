@@ -1,9 +1,11 @@
 // ====== API ======
 const API = '/api';
 
-export async function apiSearch(tab, query, page = 1) {
+export async function apiSearch(tab, query, page = 1, forums) {
   const endpoint = tab === 'vg' ? '/search/vg' : '/search/aps';
-  const res = await fetch(`${API}${endpoint}?q=${encodeURIComponent(query)}&page=${page}`);
+  let url = `${API}${endpoint}?q=${encodeURIComponent(query)}&page=${page}`;
+  if (forums && forums.length) url += `&forums=${forums.join(',')}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }

@@ -13,6 +13,7 @@ import { apiSearch } from './api.js';
 export let state = {
   view: 'search',  // 'search' | 'history' | 'imx' | 'rss'
   tab: 'vg',       // 'vg' | 'aps'
+  vgForums: new Set([302, 303, 304]),  // toggleable forum IDs for VG search
   query: '',
   loading: false,
   results: [],
@@ -94,11 +95,12 @@ export async function exportSearchData() {
   const query = state.query;
   const tab = state.tab;
   const totalPages = state.totalPages;
+  const forums = tab === 'vg' ? [...state.vgForums] : undefined;
 
   try {
     for (let p = 1; p <= totalPages; p++) {
       toast(`Fetching page ${p}/${totalPages}…`, 'success');
-      const data = await apiSearch(tab, query, p);
+      const data = await apiSearch(tab, query, p, forums);
       const pageResults = (data.results || []).map(r => ({
         title: r.title || '',
         id: r.sgenId || r.apsId || '',

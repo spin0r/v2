@@ -1,4 +1,5 @@
 import { state, render, copyAllCmdBlocks, exportSearchData } from '../app.js';
+import { toast } from '../utils.js';
 import { doSearch } from '../views/search.js';
 import { fetchHistory } from '../views/history.js';
 import { fetchRssFeed } from '../views/rss.js';
@@ -45,6 +46,23 @@ export function bindNavEvents(appEl) {
       state.scrapedCards.clear();
       state.fetchingThreadPosts.clear();
       state.completedThreadPosts.clear();
+      render();
+    });
+  });
+
+  // Forum toggles (VG)
+  appEl.querySelectorAll('.forum-toggle[data-forum-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.forumId);
+      if (state.vgForums.has(id)) {
+        if (state.vgForums.size <= 1) {
+          toast('At least one forum must be selected', 'error');
+          return;
+        }
+        state.vgForums.delete(id);
+      } else {
+        state.vgForums.add(id);
+      }
       render();
     });
   });

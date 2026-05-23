@@ -15,6 +15,20 @@ function renderHero(skipAnim) {
       <button class="tab-btn ${state.tab==='aps'?'active':''}" data-tab="aps" id="tab-aps">AdultPhotoSets</button>
     </div>
 
+    ${state.tab === 'vg' ? `
+    <div class="forum-toggles">
+      <span class="forum-toggles-label">Forums:</span>
+      ${[
+        { id: 302, name: '302-Softcore-Photo-Sets' },
+        { id: 303, name: '303-Artistic-Photo-Sets' },
+        { id: 304, name: '304-Hardcore-Photo-Sets' },
+      ].map(f => `
+        <button class="forum-toggle ${state.vgForums.has(f.id) ? 'active' : ''}" data-forum-id="${f.id}" id="forum-toggle-${f.id}">
+          ${f.name}
+        </button>
+      `).join('')}
+    </div>` : ''}
+
     <div class="search-wrap">
       <div class="search-box">
         ${svgIcon('search')}
@@ -485,7 +499,8 @@ async function doSearch(query, page = 1) {
   startTimerLoop(state);
 
   try {
-    const data = await apiSearch(state.tab, query, page);
+    const forums = state.tab === 'vg' ? [...state.vgForums] : undefined;
+    const data = await apiSearch(state.tab, query, page, forums);
     state.results = data.results || [];
     state.totalResults = data.total || state.results.length;
     state.totalPages = Math.max(1, Math.ceil(state.totalResults / 20));

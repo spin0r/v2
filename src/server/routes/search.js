@@ -18,14 +18,20 @@ async function handleVgSearch(params, res) {
   const page = Math.max(1, parseInt(params.get("page") || "1"));
   if (!query) return sendJSON(res, 400, { error: "Missing query" });
 
-  const key = query.toLowerCase();
+  // Parse optional forums param (comma-separated IDs), default to all 3
+  const forumsParam = params.get("forums");
+  const forums = forumsParam
+    ? forumsParam.split(",").map(Number).filter(n => [302, 303, 304].includes(n))
+    : [302, 303, 304];
+  if (!forums.length) return sendJSON(res, 400, { error: "No valid forums selected" });
+
+  const key = `${query.toLowerCase()}:${forums.sort().join(',')}`;
   let results;
 
   if (vgCache.has(key)) {
     results = vgCache.get(key);
   } else {
     const downloader = new ViperGirlsDownloader();
-    const forums = [302, 303, 304];
     const all = [];
     try {
       const sleep = ms => new Promise(r => setTimeout(r, ms));

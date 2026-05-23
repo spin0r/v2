@@ -135,6 +135,60 @@
   background: var(--surface-hover);
 }
 
+/* ===== FORUM TOGGLES ===== */
+.forum-toggles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeSlideUp 0.6s ease forwards 0.38s;
+}
+
+.skip-anim .forum-toggles {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.forum-toggles-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 2px;
+}
+
+.forum-toggle {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+
+.forum-toggle:hover {
+  color: var(--text-2);
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+.forum-toggle.active {
+  color: var(--accent);
+  border-color: rgba(192, 133, 50, 0.35);
+  background: rgba(192, 133, 50, 0.08);
+  box-shadow: 0 0 12px rgba(192, 133, 50, 0.06);
+}
+
 /* ===== SEARCH BOX ===== */
 .search-wrap {
   position: relative;

@@ -228,36 +228,51 @@ async function handleThreadExtract(params, res) {
   }
 }
 
-// ── RE-EXTRACT (retry only failed links, merge with previous successful URLs) ──
+// ── RE-EXTRACT (retry only failed links, merge with previous successful URLs preserving positions) ──
 async function handleReExtract(req, res) {
   const body = await readBody(req);
   let parsed;
   try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
 
-  const { failedLinks, previousUrls, title, sourceUrl, searchQuery } = parsed;
+  const { failedLinks, previousUrls, indexedFailedLinks, indexedUrls, title, sourceUrl, searchQuery } = parsed;
   if (!failedLinks || !failedLinks.length) {
     return sendJSON(res, 400, { error: "No failed links to retry" });
   }
 
+  // Use indexed data if available for position-aware merging
+  const hasIndexedData = indexedFailedLinks && indexedFailedLinks.length > 0 && indexedUrls;
   const prevUrls = previousUrls || [];
-  console.log(`[Re-Extract] Retrying ${failedLinks.length} failed links (${prevUrls.length} previous OK)`);
+  console.log(`[Re-Extract] Retrying ${failedLinks.length} failed links (${prevUrls.length} previous OK, indexed=${!!hasIndexedData})`);
 
   const extractor = new ImageHostExtractor();
   extractor.client.defaults.timeout = 25000;
   const RETRY_CONCURRENCY = 3;
-  const newUrls = [];
   const stillFailed = [];
+  const stillFailedIndexed = [];
   const hostCounts = {};
   const failedHostsMap = {};
 
+  // Build the URL map from existing successful extractions (keyed by original index)
+  const urlMap = {};
+  if (hasIndexedData) {
+    for (const [idx, url] of Object.entries(indexedUrls)) {
+      urlMap[idx] = url;
+    }
+  }
+
+  // Process failed links — use indexed entries if available
+  const linksToRetry = hasIndexedData ? indexedFailedLinks : failedLinks.map((link, i) => ({ index: prevUrls.length + i, link }));
+
   const chunks = [];
-  for (let i = 0; i < failedLinks.length; i += RETRY_CONCURRENCY)
-    chunks.push(failedLinks.slice(i, i + RETRY_CONCURRENCY));
+  for (let i = 0; i < linksToRetry.length; i += RETRY_CONCURRENCY)
+    chunks.push(linksToRetry.slice(i, i + RETRY_CONCURRENCY));
 
   for (const chunk of chunks) {
     const results = await Promise.allSettled(
-      chunk.map(link =>
-        extractor.extractDirectUrl(link).then(u => {
+      chunk.map(entry => {
+        const link = typeof entry === 'string' ? entry : entry.link;
+        const index = typeof entry === 'string' ? null : entry.index;
+        return extractor.extractDirectUrl(link).then(u => {
           const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
           const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
           if (u) {
@@ -265,24 +280,47 @@ async function handleReExtract(req, res) {
           } else {
             failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
             stillFailed.push(link);
+            if (index != null) stillFailedIndexed.push({ index, link });
           }
-          return { link, u };
+          return { link, u, index };
         }).catch(() => {
           const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
           const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
           failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
           stillFailed.push(link);
-          return { link, u: null };
-        })
-      )
+          if (index != null) stillFailedIndexed.push({ index, link });
+          return { link, u: null, index };
+        });
+      })
     );
     for (const r of results) {
-      if (r.status === "fulfilled" && r.value.u) newUrls.push(r.value.u);
+      if (r.status === "fulfilled" && r.value.u) {
+        if (r.value.index != null) {
+          urlMap[r.value.index] = r.value.u;
+        }
+      }
     }
   }
 
-  const allUrls = [...prevUrls, ...newUrls];
-  const totalOriginal = prevUrls.length + failedLinks.length;
+  // Build final URL list preserving original positions
+  let allUrls;
+  let newlyRecovered;
+  if (hasIndexedData) {
+    allUrls = Object.keys(urlMap)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map(i => urlMap[i]);
+    newlyRecovered = allUrls.length - Object.keys(indexedUrls).length;
+  } else {
+    // Fallback for old-style calls without indexed data — append at end
+    const recoveredUrls = Object.keys(urlMap).map(k => urlMap[k]);
+    allUrls = [...prevUrls, ...recoveredUrls];
+    newlyRecovered = recoveredUrls.length;
+  }
+
+  const totalOriginal = hasIndexedData
+    ? Object.keys(indexedUrls).length + (indexedFailedLinks ? indexedFailedLinks.length : failedLinks.length)
+    : prevUrls.length + failedLinks.length;
 
   if (!allUrls.length) {
     return sendJSON(res, 200, {
@@ -294,8 +332,10 @@ async function handleReExtract(req, res) {
       extracted: 0,
       failed: totalOriginal,
       failedLinks: stillFailed,
+      indexedFailedLinks: stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
       failedHosts: failedHostsMap,
       directUrls: [],
+      indexedUrls: undefined,
       pasteUrl: null,
     });
   }
@@ -326,7 +366,9 @@ async function handleReExtract(req, res) {
     failed: stillFailed.length,
     failedHosts: stillFailed.length > 0 ? failedHostsMap : undefined,
     failedLinks: stillFailed.length > 0 ? stillFailed : undefined,
-    newlyRecovered: newUrls.length,
+    indexedFailedLinks: stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
+    indexedUrls: Object.keys(urlMap).length > 0 ? urlMap : undefined,
+    newlyRecovered,
     services,
     directUrls: allUrls,
     previewUrls: allUrls.slice(0, 5),

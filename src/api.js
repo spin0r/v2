@@ -121,11 +121,11 @@ export async function apiImxUpload(url) {
   return res.json();
 }
 
-export async function apiReExtract(failedLinks, previousUrls, title, sourceUrl, searchQuery) {
+export async function apiReExtract(failedLinks, previousUrls, title, sourceUrl, searchQuery, indexedFailedLinks, indexedUrls) {
   const res = await fetch(`${API}/re-extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ failedLinks, previousUrls, title, sourceUrl, searchQuery }),
+    body: JSON.stringify({ failedLinks, previousUrls, title, sourceUrl, searchQuery, indexedFailedLinks, indexedUrls }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

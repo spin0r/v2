@@ -146,7 +146,9 @@ export function bindModalEvents(appEl) {
         d.directUrls || [],
         d.title,
         d.sourceUrl,
-        d.hashtag ? d.hashtag.replace('#', '').replace(/_/g, ' ').trim() : ''
+        d.hashtag ? d.hashtag.replace('#', '').replace(/_/g, ' ').trim() : '',
+        d.indexedFailedLinks || undefined,
+        d.indexedUrls || undefined
       );
       // Update modal with new result
       state.modalData = { ...result, title: result.title || d.title, sourceUrl: result.sourceUrl || d.sourceUrl };

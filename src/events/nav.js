@@ -64,6 +64,7 @@ export function bindNavEvents(appEl) {
         state.vgForums.add(id);
       }
       render();
+      try { localStorage.setItem('vgForums', JSON.stringify([...state.vgForums])); } catch {}
     });
   });
 

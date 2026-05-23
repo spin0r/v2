@@ -13,7 +13,13 @@ import { apiSearch } from './api.js';
 export let state = {
   view: 'search',  // 'search' | 'history' | 'imx' | 'rss'
   tab: 'vg',       // 'vg' | 'aps'
-  vgForums: new Set([302, 303, 304]),  // toggleable forum IDs for VG search
+  vgForums: (() => {
+    try {
+      const saved = localStorage.getItem('vgForums');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch {}
+    return new Set([302, 303, 304]);
+  })(),  // toggleable forum IDs for VG search
   query: '',
   loading: false,
   results: [],

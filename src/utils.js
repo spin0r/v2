@@ -69,7 +69,7 @@ export function copyText(text) {
 // ====== CMD TEXT HELPER ======
 export function getCmdText(result) {
   if (!result || !result.ok) return '';
-  return [result.sendCommand, result.dlCommand].filter(Boolean).join('\n');
+  return [result.sendCommand, result.dlCommand].filter(Boolean).join('\n') + '\n';
 }
 
 // ====== CELEBRATION ======

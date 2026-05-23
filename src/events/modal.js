@@ -19,7 +19,7 @@ export function bindModalEvents(appEl) {
   if (dfOpenBtn) dfOpenBtn.addEventListener('click', () => window.open(dfOpenBtn.dataset.url, '_blank', 'noopener'));
 
   const cmdBlock = appEl.querySelector('.cmd-block');
-  if (cmdBlock) cmdBlock.addEventListener('click', () => copyText(cmdBlock.dataset.copyCmd.replace(/\\n/g, '\n')));
+  if (cmdBlock) cmdBlock.addEventListener('click', () => copyText(cmdBlock.dataset.copyCmd.replace(/\\n/g, '\n') + '\n'));
 
   const dfCopyPaste = appEl.querySelector('#df-copy-paste');
   if (dfCopyPaste && state.directFetchResult?.pasteUrl) {
@@ -228,6 +228,6 @@ export function bindModalEvents(appEl) {
   appEl.querySelectorAll('[data-copy-cmd]').forEach(el => {
     el.style.cursor = 'pointer';
     el.title = 'Click to copy';
-    el.addEventListener('click', () => copyText(el.dataset.copyCmd.replace(/\\n/g, '\n')));
+    el.addEventListener('click', () => copyText(el.dataset.copyCmd.replace(/\\n/g, '\n') + '\n'));
   });
 }

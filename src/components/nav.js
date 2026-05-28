@@ -17,8 +17,9 @@ function renderNav() {
       <li><a class="animate-line ${state.view === "imx" ? "active" : ""}" id="nav-imx" style="cursor:pointer">IMX</a></li>
       <li><a class="animate-line ${isHistory ? "active" : ""}" id="nav-history" style="cursor:pointer">History</a></li>
       <li><a class="animate-line ${state.view === "rss" ? "active" : ""}" id="nav-rss" style="cursor:pointer">RSS</a></li>
-      <li><a class="animate-line" id="nav-docs" href="https://viper.to" target="_blank" rel="noopener">ViperGirls</a></li>
-      <li><a class="animate-line" id="nav-aps" href="https://adultphotosets.best" target="_blank" rel="noopener">APS</a></li>
+      <li><a class="animate-line" href="/plain" target="_blank" rel="noopener">Plain</a></li>
+      <li><a class="animate-line" href="/docs" target="_blank" rel="noopener">Docs</a></li>
+      <li><a class="animate-line" href="/text" target="_blank" rel="noopener">Text</a></li>
     </ul>
   </nav>`;
 }

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viper API — RSS Feed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/docs/assets/style.css">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">
+      <span>Viper</span>
+      <span class="nav-badge">API</span>
+    </a>
+  </nav>
+
+  <div class="container">
+    <div class="hero-eyebrow">API Reference</div>
+    <h1>RSS <span>Feed</span></h1>
+    <p class="hero-sub">Live feed of threads from the Hardcore Photo Sets forum. Available as JSON for programmatic use or Atom XML for feed readers.</p>
+
+    <!-- Endpoints -->
+    <div class="section">
+      <div class="section-title">Endpoints</div>
+      <div class="endpoint-card">
+        <div class="endpoint-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-path">/api/rss</span>
+        </div>
+        <p class="endpoint-desc">Returns parsed thread entries as JSON.</p>
+      </div>
+      <div class="endpoint-card">
+        <div class="endpoint-row">
+          <span class="method-badge method-get">GET</span>
+          <span class="endpoint-path">/api/rss.xml</span>
+        </div>
+        <p class="endpoint-desc">Returns an Atom 1.0 XML feed — compatible with any feed reader (RSS readers, Feedly, etc.).</p>
+      </div>
+    </div>
+
+    <!-- JSON Response -->
+    <div class="section">
+      <div class="section-title">JSON Response — /api/rss</div>
+      <table class="params-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>ok</td><td>boolean</td><td>Whether the feed was fetched successfully</td></tr>
+          <tr><td>feedTitle</td><td>string</td><td>Always <code style="color:var(--accent-2)">"Hardcore Photo Sets"</code></td></tr>
+          <tr><td>feedUpdated</td><td>string</td><td>ISO 8601 timestamp of when the feed was fetched</td></tr>
+          <tr><td>total</td><td>number</td><td>Number of thread entries returned</td></tr>
+          <tr><td>entries</td><td>Entry[]</td><td>Array of thread objects (see below)</td></tr>
+        </tbody>
+      </table>
+
+      <div class="section-title" style="margin-top:24px">Entry Object</div>
+      <table class="params-table">
+        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>title</td><td>string</td><td>Thread title</td></tr>
+          <tr><td>prefix</td><td>string</td><td>Studio/category tag (e.g. <code style="color:var(--accent-2)">"Brazzers"</code>), empty string if none</td></tr>
+          <tr><td>link</td><td>string</td><td>Full URL to the thread on viper.to</td></tr>
+          <tr><td>threadId</td><td>string</td><td>Numeric thread ID extracted from the URL</td></tr>
+          <tr><td>author</td><td>string</td><td>Username of the thread poster</td></tr>
+          <tr><td>dateText</td><td>string</td><td>Raw date string as shown on the forum (e.g. <code style="color:var(--accent-2)">"Today 14:32"</code>)</td></tr>
+          <tr><td>published</td><td>string</td><td>ISO 8601 timestamp parsed from dateText, empty string if unparseable</td></tr>
+          <tr><td>replies</td><td>string</td><td>Reply count as a string, empty if unavailable</td></tr>
+          <tr><td>views</td><td>string</td><td>View count as a string, empty if unavailable</td></tr>
+          <tr><td>thumbnails</td><td>string[]</td><td>Array of thumbnail image URLs from the thread preview</td></tr>
+        </tbody>
+      </table>
+
+      <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>{
+  <span class="key">"ok"</span>: <span class="bool">true</span>,
+  <span class="key">"feedTitle"</span>: <span class="str">"Hardcore Photo Sets"</span>,
+  <span class="key">"feedUpdated"</span>: <span class="str">"2026-05-28T10:00:00.000Z"</span>,
+  <span class="key">"total"</span>: 28,
+  <span class="key">"entries"</span>: [
+    {
+      <span class="key">"title"</span>: <span class="str">"Luna Star - Gets Wild"</span>,
+      <span class="key">"prefix"</span>: <span class="str">"Brazzers"</span>,
+      <span class="key">"link"</span>: <span class="str">"https://viper.to/threads/16244690-Luna-Star-Gets-Wild"</span>,
+      <span class="key">"threadId"</span>: <span class="str">"16244690"</span>,
+      <span class="key">"author"</span>: <span class="str">"uploader99"</span>,
+      <span class="key">"dateText"</span>: <span class="str">"Today 14:32"</span>,
+      <span class="key">"published"</span>: <span class="str">"2026-05-28T14:32:00.000Z"</span>,
+      <span class="key">"replies"</span>: <span class="str">"4"</span>,
+      <span class="key">"views"</span>: <span class="str">"312"</span>,
+      <span class="key">"thumbnails"</span>: [<span class="str">"https://cdn.example.com/thumb1.jpg"</span>]
+    }
+  ]
+}</div>
+    </div>
+
+    <!-- XML Response -->
+    <div class="section">
+      <div class="section-title">Atom XML Response — /api/rss.xml</div>
+      <p class="endpoint-desc" style="margin-bottom:12px">Returns a valid <a href="https://tools.ietf.org/html/rfc4287" style="color:var(--accent-2)">Atom 1.0</a> feed with <code style="color:var(--accent-2)">Content-Type: application/atom+xml</code>. Each thread becomes an <code style="color:var(--accent-2)">&lt;entry&gt;</code>.</p>
+      <table class="params-table">
+        <thead><tr><th>Atom Element</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr><td>&lt;id&gt;</td><td>Thread URL</td></tr>
+          <tr><td>&lt;title&gt;</td><td>Thread title</td></tr>
+          <tr><td>&lt;link&gt;</td><td>Thread URL</td></tr>
+          <tr><td>&lt;published&gt;</td><td>Parsed post date (omitted if unparseable)</td></tr>
+          <tr><td>&lt;updated&gt;</td><td>Parsed post date, falls back to feed fetch time</td></tr>
+          <tr><td>&lt;author&gt;</td><td>Poster username (omitted if empty)</td></tr>
+          <tr><td>&lt;category&gt;</td><td>Studio/prefix tag (omitted if empty)</td></tr>
+          <tr><td>&lt;content&gt;</td><td>HTML img tags for thumbnails (omitted if none)</td></tr>
+        </tbody>
+      </table>
+      <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="comment">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+&lt;<span class="key">feed</span> xmlns=<span class="str">"http://www.w3.org/2005/Atom"</span>&gt;
+  &lt;<span class="key">id</span>&gt;https://viper.to/forums/304-Hardcore-Photo-Sets&lt;/<span class="key">id</span>&gt;
+  &lt;<span class="key">title</span>&gt;Hardcore Photo Sets&lt;/<span class="key">title</span>&gt;
+  &lt;<span class="key">updated</span>&gt;2026-05-28T10:00:00.000Z&lt;/<span class="key">updated</span>&gt;
+  &lt;<span class="key">entry</span>&gt;
+    &lt;<span class="key">id</span>&gt;https://viper.to/threads/16244690-Luna-Star-Gets-Wild&lt;/<span class="key">id</span>&gt;
+    &lt;<span class="key">title</span>&gt;Luna Star - Gets Wild&lt;/<span class="key">title</span>&gt;
+    &lt;<span class="key">link</span> href=<span class="str">"https://viper.to/threads/16244690-Luna-Star-Gets-Wild"</span>/&gt;
+    &lt;<span class="key">published</span>&gt;2026-05-28T14:32:00.000Z&lt;/<span class="key">published</span>&gt;
+    &lt;<span class="key">updated</span>&gt;2026-05-28T14:32:00.000Z&lt;/<span class="key">updated</span>&gt;
+    &lt;<span class="key">author</span>&gt;&lt;<span class="key">name</span>&gt;uploader99&lt;/<span class="key">name</span>&gt;&lt;/<span class="key">author</span>&gt;
+    &lt;<span class="key">category</span> term=<span class="str">"Brazzers"</span>/&gt;
+    &lt;<span class="key">content</span> type=<span class="str">"html"</span>&gt;&amp;lt;img src=&amp;quot;https://cdn.example.com/thumb1.jpg&amp;quot;/&amp;gt;&lt;/<span class="key">content</span>&gt;
+  &lt;/<span class="key">entry</span>&gt;
+&lt;/<span class="key">feed</span>&gt;</div>
+    </div>
+
+    <!-- Date Parsing -->
+    <div class="section">
+      <div class="section-title">Date Parsing</div>
+      <p class="endpoint-desc" style="margin-bottom:12px">The forum uses relative and absolute date formats. The server normalises all of them to ISO 8601.</p>
+      <table class="params-table">
+        <thead><tr><th>Forum Format</th><th>Example</th><th>Resolved As</th></tr></thead>
+        <tbody>
+          <tr><td>Today HH:MM</td><td><code style="color:var(--accent-2)">Today 14:32</code></td><td>Current date at 14:32 UTC</td></tr>
+          <tr><td>Yesterday HH:MM</td><td><code style="color:var(--accent-2)">Yesterday 09:15</code></td><td>Previous date at 09:15 UTC</td></tr>
+          <tr><td>DDth Month YYYY HH:MM</td><td><code style="color:var(--accent-2)">22nd May 2026 05:10</code></td><td>Exact ISO timestamp</td></tr>
+          <tr><td>Anything else</td><td>—</td><td><code style="color:var(--accent-2)">published</code> field is empty string</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Errors -->
+    <div class="section">
+      <div class="section-title">Error Codes</div>
+      <table class="params-table">
+        <thead><tr><th>Status</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>200</td><td>Success — JSON has <code style="color:var(--accent-2)">ok: true</code></td></tr>
+          <tr><td>500</td><td>Upstream fetch failed (viper.to unreachable, timeout, etc.) — JSON has <code style="color:var(--accent-2)">ok: false</code> and <code style="color:var(--accent-2)">error</code> message. XML endpoint returns plain text error.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Examples -->
+    <div class="section">
+      <div class="section-title">Examples</div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(event, 'tab-curl')">cURL</button>
+        <button class="tab" onclick="switchTab(event, 'tab-js')">JavaScript</button>
+        <button class="tab" onclick="switchTab(event, 'tab-py')">Python</button>
+      </div>
+
+      <div id="tab-curl" class="tab-content active">
+        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="comment"># JSON feed</span>
+curl <span class="str api-url"></span>/api/rss
+
+<span class="comment"># Atom XML feed</span>
+curl <span class="str api-url"></span>/api/rss.xml</div>
+      </div>
+
+      <div id="tab-js" class="tab-content">
+        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="key">const</span> { feedTitle, entries } = <span class="key">await</span> fetch(<span class="str">'/api/rss'</span>).then(r => r.json());
+console.log(`${feedTitle}: ${entries.length} threads`);
+entries.forEach(e => console.log(e.title, e.published));</div>
+      </div>
+
+      <div id="tab-py" class="tab-content">
+        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="key">import</span> requests
+
+data = requests.get(<span class="str api-url-py">""</span>).json()
+<span class="key">for</span> entry <span class="key">in</span> data[<span class="str">"entries"</span>]:
+    print(entry[<span class="str">"title"</span>], entry[<span class="str">"published"</span>])</div>
+      </div>
+    </div>
+
+    <!-- Try it -->
+    <div class="try-section">
+      <div class="try-title"><span class="dot"></span> Try it live</div>
+      <div class="try-actions" style="margin-top:0">
+        <button class="try-btn" id="try-btn" onclick="tryFeed('json')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Fetch JSON
+        </button>
+        <button class="try-btn" id="try-btn-xml" onclick="tryFeed('xml')" style="background:var(--bg-3);border:1px solid var(--border)">
+          Fetch XML
+        </button>
+      </div>
+      <div class="try-output" id="try-output" style="display:none">
+        <div class="try-output-label">Result</div>
+        <div class="try-result" id="try-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/docs/assets/app.js"></script>
+  <script>
+    async function tryFeed(type) {
+      const btnJson = document.getElementById('try-btn');
+      const btnXml = document.getElementById('try-btn-xml');
+      const output = document.getElementById('try-output');
+      const result = document.getElementById('try-result');
+      const isJson = type === 'json';
+      const btn = isJson ? btnJson : btnXml;
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Fetching…';
+      output.style.display = 'block';
+      result.className = 'try-result empty';
+      result.textContent = 'Waiting…';
+
+      try {
+        const res = await fetch(isJson ? '/api/rss' : '/api/rss.xml');
+        const text = await res.text();
+        result.className = 'try-result';
+        result.textContent = isJson
+          ? JSON.stringify(JSON.parse(text), null, 2)
+          : text;
+      } catch (e) {
+        result.className = 'try-result error';
+        result.textContent = 'Request failed: ' + e.message;
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = isJson
+        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Fetch JSON'
+        : 'Fetch XML';
+    }
+
+    // inject base URL into examples
+    (function() {
+      const base = window.location.origin;
+      document.querySelectorAll('.api-url').forEach(el => el.textContent = base);
+      document.querySelectorAll('.api-url-py').forEach(el => el.textContent = '"' + base + '/api/rss"');
+    })();
+  </script>
+</body>
+</html>

@@ -1,27 +1,29 @@
 // ====== TOAST ======
-export function toast(msg, type = 'success') {
-  const container = document.querySelector('.toast-container') || (() => {
-    const c = document.createElement('div');
-    c.className = 'toast-container';
-    document.body.appendChild(c);
-    return c;
-  })();
-  const t = document.createElement('div');
+export function toast(msg, type = "success") {
+  const container =
+    document.querySelector(".toast-container") ||
+    (() => {
+      const c = document.createElement("div");
+      c.className = "toast-container";
+      document.body.appendChild(c);
+      return c;
+    })();
+  const t = document.createElement("div");
   t.className = `toast ${type}`;
-  t.innerHTML = `<span>${type === 'success' ? '✓' : '×'}</span><span>${msg}</span>`;
+  t.innerHTML = `<span>${type === "success" ? "✓" : "×"}</span><span>${msg}</span>`;
   container.appendChild(t);
   setTimeout(() => t.remove(), 3500);
 }
 
 // ====== DATE FORMATTING ======
 export function formatDate(ts) {
-  if (!ts) return '';
+  if (!ts) return "";
   const d = new Date(ts * 1000);
-  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
 export function formatRssDate(isoStr) {
-  if (!isoStr) return '';
+  if (!isoStr) return "";
   const d = new Date(isoStr);
   if (isNaN(d)) return isoStr;
   const now = new Date();
@@ -30,14 +32,16 @@ export function formatRssDate(isoStr) {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
   let rel;
-  if (diffMins < 1) rel = 'Just now';
+  if (diffMins < 1) rel = "Just now";
   else if (diffMins < 60) rel = `${diffMins}m ago`;
   else if (diffHours < 24) rel = `${diffHours}h ago`;
   else if (diffDays < 7) rel = `${diffDays}d ago`;
-  else rel = '';
-  const pad = n => String(n).padStart(2, '0');
-  const ist = new Date(d.getTime() + (5.5 * 60 * 60 * 1000 + d.getTimezoneOffset() * 60000));
-  const date = `${pad(ist.getDate())}/${pad(ist.getMonth()+1)}/${ist.getFullYear()} ${pad(ist.getHours())}:${pad(ist.getMinutes())} IST`;
+  else rel = "";
+  const pad = (n) => String(n).padStart(2, "0");
+  const ist = new Date(
+    d.getTime() + (5.5 * 60 * 60 * 1000 + d.getTimezoneOffset() * 60000),
+  );
+  const date = `${pad(ist.getDate())}/${pad(ist.getMonth() + 1)}/${ist.getFullYear()} ${pad(ist.getHours())}:${pad(ist.getMinutes())} IST`;
   return rel ? `${rel} · ${date}` : date;
 }
 
@@ -54,22 +58,27 @@ export function svgIcon(name) {
     download: `<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
     viper: `<img src="/web.svg" style="width: 1em; height: 1em;" alt="Viper">`,
   };
-  return icons[name] || '';
+  return icons[name] || "";
 }
 
 // ====== COPY TEXT ======
 export function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    toast('Copied!', 'success');
-  }).catch(() => {
-    toast('Copy failed', 'error');
-  });
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      toast("Copied!", "success");
+    })
+    .catch(() => {
+      toast("Copy failed", "error");
+    });
 }
 
 // ====== CMD TEXT HELPER ======
 export function getCmdText(result) {
-  if (!result || !result.ok) return '';
-  return [result.sendCommand, result.dlCommand].filter(Boolean).join('\n') + '\n';
+  if (!result || !result.ok) return "";
+  return (
+    [result.sendCommand, result.dlCommand].filter(Boolean).join("\n") + "\n"
+  );
 }
 
 // ====== CELEBRATION ======
@@ -81,7 +90,7 @@ function playSuccessSound() {
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.type = 'sine';
+    osc.type = "sine";
     osc.frequency.setValueAtTime(880, ctx.currentTime);
     osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.05);
     osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.1);
@@ -90,17 +99,31 @@ function playSuccessSound() {
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + 0.15);
     setTimeout(() => ctx.close(), 300);
-  } catch (e) { /* audio not supported */ }
+  } catch (e) {
+    /* audio not supported */
+  }
 }
 
 function fireConfetti() {
-  if (typeof confetti !== 'function') return;
+  if (typeof confetti !== "function") return;
   const end = Date.now() + 600;
   (function frame() {
-    confetti({ particleCount: 3, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors: ['#c08532', '#e6a84d', '#f0c674', '#4ade80'] });
-    confetti({ particleCount: 3, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors: ['#c08532', '#e6a84d', '#f0c674', '#4ade80'] });
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors: ["#c08532", "#e6a84d", "#f0c674", "#4ade80"],
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors: ["#c08532", "#e6a84d", "#f0c674", "#4ade80"],
+    });
     if (Date.now() < end) requestAnimationFrame(frame);
-  }());
+  })();
 }
 
 export function celebrate() {
@@ -117,8 +140,11 @@ export function startTimerLoop(state) {
     let needsUpdate = false;
     // Search timer
     if (state.searchStartTime) {
-      state.searchElapsed = ((Date.now() - state.searchStartTime) / 1000).toFixed(1);
-      const el = document.querySelector('#search-timer');
+      state.searchElapsed = (
+        (Date.now() - state.searchStartTime) /
+        1000
+      ).toFixed(1);
+      const el = document.querySelector("#search-timer");
       if (el) el.textContent = `${state.searchElapsed}s`;
       needsUpdate = true;
     }
@@ -131,6 +157,9 @@ export function startTimerLoop(state) {
 
 // ====== URL DETECTION ======
 export function isThreadUrl(str) {
-  return /^https?:\/\/(www\.)?(vipergirls\.to|viper\.to)\/(threads|showpost\.php)/i.test(str) ||
-         /^https?:\/\/(www\.)?adultphotosets\.com\/.+/i.test(str);
+  return (
+    /^https?:\/\/(www\.)?(vipergirls\.to|viper\.to)\/(threads|showpost\.php)/i.test(
+      str,
+    ) || /^https?:\/\/(www\.)?adultphotosets\.com\/.+/i.test(str)
+  );
 }

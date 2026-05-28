@@ -7,7 +7,11 @@
   text-transform: uppercase;
   letter-spacing: 0.6px;
   color: var(--accent);
-  background: linear-gradient(135deg, rgba(192, 133, 50, 0.12), rgba(212, 160, 74, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(192, 133, 50, 0.12),
+    rgba(212, 160, 74, 0.08)
+  );
   border: 1px solid rgba(192, 133, 50, 0.22);
   padding: 2px 10px;
   border-radius: var(--radius-pill);
@@ -16,7 +20,11 @@
 }
 
 .rss-card:hover .rss-studio-badge {
-  background: linear-gradient(135deg, rgba(192, 133, 50, 0.2), rgba(212, 160, 74, 0.15));
+  background: linear-gradient(
+    135deg,
+    rgba(192, 133, 50, 0.2),
+    rgba(212, 160, 74, 0.15)
+  );
   box-shadow: 0 0 12px rgba(192, 133, 50, 0.15);
 }
 
@@ -49,7 +57,7 @@
 }
 
 .rss-updated-badge::before {
-  content: '';
+  content: "";
   width: 6px;
   height: 6px;
   background: #4ade80;

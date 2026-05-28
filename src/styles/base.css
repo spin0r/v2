@@ -13,8 +13,8 @@
   --text: #edecec;
   --text-2: rgba(237, 236, 236, 0.55);
   --text-3: rgba(237, 236, 236, 0.3);
-  --mono: 'JetBrains Mono', monospace;
-  --sans: 'Inter', sans-serif;
+  --mono: "JetBrains Mono", monospace;
+  --sans: "Inter", sans-serif;
   --radius: 14px;
   --radius-sm: 8px;
   --radius-pill: 999px;
@@ -54,7 +54,7 @@ body {
 
 /* ===== NOISE OVERLAY ===== */
 body::before {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwBAMAAAClLOS0AAAAElBMVEUAAAAAAAAAAAAAAAAAAAAAAADgKxmiAAAABnRSTlMFBQUFBQWoay6DAAAASUlEQVQ4y2MQRgMMDCiBKIMoCkGhKIoqRBOE0MQxAFWRMIZCYQyFIugKhTEUCqMrFMZSKIylUBhLIYY5YugKMcwRw1CIMYcWAABFQi7MibxRjgAAAABJRU5ErkJggg==");
@@ -80,7 +80,12 @@ body::before {
 .glow-orb-2 {
   width: 700px;
   height: 700px;
-  background: radial-gradient(circle, rgba(212, 160, 74, 0.05) 0%, rgba(212, 160, 74, 0.02) 30%, transparent 60%);
+  background: radial-gradient(
+    circle,
+    rgba(212, 160, 74, 0.05) 0%,
+    rgba(212, 160, 74, 0.02) 30%,
+    transparent 60%
+  );
   bottom: -150px;
   right: -200px;
 }
@@ -93,4 +98,3 @@ body::before {
   display: flex;
   flex-direction: column;
 }
-

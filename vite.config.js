@@ -1,23 +1,27 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from "vite";
 
 export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
+      "/api": {
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
-      '/text': {
-        target: 'http://localhost:3001',
+      "/text": {
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
-      '/health': {
-        target: 'http://localhost:3001',
+      "/health": {
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
-      '/docs': {
-        target: 'http://localhost:3001',
+      "/docs": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/plain": {
+        target: "http://localhost:3001",
         changeOrigin: true,
       },
     },

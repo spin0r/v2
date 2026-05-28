@@ -33,7 +33,9 @@
   line-height: 1.6;
   resize: vertical;
   outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .imx-textarea:focus {
@@ -55,7 +57,9 @@
   font-family: var(--mono);
   font-size: 13px;
   outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .imx-url-input:focus {
@@ -74,4 +78,3 @@
   border-radius: var(--radius);
   padding: 24px;
 }
-

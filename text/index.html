@@ -1,113 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Tools — V2</title>
+    <meta
+      name="description"
+      content="Text formatting and styling tools. Transform your text with one click."
+    />
+    <link rel="icon" type="image/svg+xml" href="/top.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/text/style.css" />
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Text Tools — V2</title>
-  <meta name="description" content="Text formatting and styling tools. Transform your text with one click." />
-  <link rel="icon" type="image/svg+xml" href="/top.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    rel="stylesheet" />
-  <link rel="stylesheet" href="/text/style.css" />
-</head>
+  <body>
+    <div id="app">
+      <div class="glow-orb glow-orb-1"></div>
 
-<body>
-  <div id="app">
-    <div class="glow-orb glow-orb-1"></div>
+      <!-- NAV -->
+      <nav>
+        <a class="nav-logo" href="/">
+          <img src="/web.svg" alt="Text Tools" class="nav-logo-icon" />
+          <span>Text</span>
+          <span class="nav-badge">v2</span>
+        </a>
+        <ul class="nav-links">
+          <li><a class="active" href="#">Format</a></li>
+          <li>
+            <a
+              href="https://v2-vl42.onrender.com/"
+              target="_blank"
+              rel="noopener"
+              >Viper</a
+            >
+          </li>
+        </ul>
+      </nav>
 
-    <!-- NAV -->
-    <nav>
-      <a class="nav-logo" href="/">
-        <img src="/web.svg" alt="Text Tools" class="nav-logo-icon" />
-        <span>Text</span>
-        <span class="nav-badge">v2</span>
-      </a>
-      <ul class="nav-links">
-        <li><a class="active" href="#">Format</a></li>
-        <li><a href="https://v2-vl42.onrender.com/" target="_blank" rel="noopener">Viper</a></li>
-      </ul>
-    </nav>
+      <!-- HERO -->
+      <section class="hero">
+        <div class="hero-eyebrow">Text tools</div>
+        <h1>Format text,<br /><span>instantly.</span></h1>
+        <p class="hero-sub">
+          Paste your text, toggle formatting options, and copy the result.
+          Real-time transformations with zero friction.
+        </p>
+      </section>
 
-    <!-- HERO -->
-    <section class="hero">
-      <div class="hero-eyebrow">Text tools</div>
-      <h1>Format text,<br><span>instantly.</span></h1>
-      <p class="hero-sub">Paste your text, toggle formatting options, and copy the result. Real-time transformations with zero friction.</p>
-    </section>
-
-    <!-- MAIN -->
-    <main>
-      <div class="tool-panel">
-
-        <!-- OPTIONS -->
-        <div class="options-bar">
-          <span class="options-label">Styles</span>
-          <button class="option-chip" id="opt-space-dot" data-option="spaceToDot">
-            <span class="chip-dot"></span>
-            Replace space with .
-          </button>
-          <button class="option-chip" id="opt-space-underscore" data-option="spaceToUnderscore">
-            <span class="chip-dot"></span>
-            Replace space with _
-          </button>
-          <button class="option-chip ai-chip active" id="opt-ai-rename" data-option="aiRename">
-            <span class="chip-dot"></span>
-            <svg class="chip-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
-            AI Rename
-          </button>
-        </div>
-
-        <!-- TEXT GRID -->
-        <div class="text-grid">
-          <div class="text-col">
-            <div class="text-col-header">
-              <span class="text-col-label">Input</span>
-              <span class="char-count" id="input-count">0 chars</span>
-            </div>
-            <textarea class="text-area" id="text-input" placeholder="Paste or type your text here…" spellcheck="false"></textarea>
-          </div>
-          <div class="text-col">
-            <div class="text-col-header">
-              <span class="text-col-label">Output</span>
-              <span class="char-count" id="output-count">0 chars</span>
-            </div>
-            <textarea class="text-area output" id="text-output" placeholder="Formatted text will appear here…"></textarea>
-          </div>
-        </div>
-
-        <!-- ACTION BAR -->
-        <div class="action-bar">
-          <div class="action-bar-left">
-            <div class="stat-pill">
-              <span>Replacements</span>
-              <span class="val" id="replace-count">0</span>
-            </div>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="action-btn" id="btn-clear">
-              <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              Clear
+      <!-- MAIN -->
+      <main>
+        <div class="tool-panel">
+          <!-- OPTIONS -->
+          <div class="options-bar">
+            <span class="options-label">Styles</span>
+            <button
+              class="option-chip"
+              id="opt-space-dot"
+              data-option="spaceToDot"
+            >
+              <span class="chip-dot"></span>
+              Replace space with .
             </button>
-            <button class="action-btn primary" id="btn-convert">
-              <svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
-              Convert
+            <button
+              class="option-chip"
+              id="opt-space-underscore"
+              data-option="spaceToUnderscore"
+            >
+              <span class="chip-dot"></span>
+              Replace space with _
             </button>
-            <button class="action-btn primary" id="btn-copy">
-              <svg viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-              Copy
+            <button
+              class="option-chip ai-chip active"
+              id="opt-ai-rename"
+              data-option="aiRename"
+            >
+              <span class="chip-dot"></span>
+              <svg
+                class="chip-sparkle"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"
+                />
+              </svg>
+              AI Rename
             </button>
           </div>
+
+          <!-- TEXT GRID -->
+          <div class="text-grid">
+            <div class="text-col">
+              <div class="text-col-header">
+                <span class="text-col-label">Input</span>
+                <span class="char-count" id="input-count">0 chars</span>
+              </div>
+              <textarea
+                class="text-area"
+                id="text-input"
+                placeholder="Paste or type your text here…"
+                spellcheck="false"
+              ></textarea>
+            </div>
+            <div class="text-col">
+              <div class="text-col-header">
+                <span class="text-col-label">Output</span>
+                <span class="char-count" id="output-count">0 chars</span>
+              </div>
+              <textarea
+                class="text-area output"
+                id="text-output"
+                placeholder="Formatted text will appear here…"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- ACTION BAR -->
+          <div class="action-bar">
+            <div class="action-bar-left">
+              <div class="stat-pill">
+                <span>Replacements</span>
+                <span class="val" id="replace-count">0</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px">
+              <button class="action-btn" id="btn-clear">
+                <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                Clear
+              </button>
+              <button class="action-btn primary" id="btn-convert">
+                <svg viewBox="0 0 24 24">
+                  <path
+                    d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"
+                  />
+                </svg>
+                Convert
+              </button>
+              <button class="action-btn primary" id="btn-copy">
+                <svg viewBox="0 0 24 24">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path
+                    d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
+                  />
+                </svg>
+                Copy
+              </button>
+            </div>
+          </div>
         </div>
+      </main>
+    </div>
 
-      </div>
-    </main>
-  </div>
-
-  <script src="/text/app.js"></script>
-</body>
-
+    <script src="/text/app.js"></script>
+  </body>
 </html>

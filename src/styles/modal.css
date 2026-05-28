@@ -120,7 +120,9 @@
 }
 
 /* ===== RICH RESULT MODAL ===== */
-.modal-wide { max-width: 640px; }
+.modal-wide {
+  max-width: 640px;
+}
 
 .modal-title-text {
   font-size: 14px;
@@ -160,7 +162,10 @@
   flex-shrink: 0;
 }
 
-.info-val { color: var(--text); word-break: break-all; }
+.info-val {
+  color: var(--text);
+  word-break: break-all;
+}
 
 .info-val.accent {
   color: var(--accent);
@@ -186,10 +191,12 @@
   font-weight: 600;
   color: var(--accent);
   text-decoration: none;
-  border-bottom: 1px solid rgba(255,77,28,0.3);
+  border-bottom: 1px solid rgba(255, 77, 28, 0.3);
   transition: border-color var(--transition);
 }
-.paste-link:hover { border-color: var(--accent); }
+.paste-link:hover {
+  border-color: var(--accent);
+}
 
 /* Command block */
 .cmd-block {
@@ -201,7 +208,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  transition: border-color var(--transition), background var(--transition);
+  transition:
+    border-color var(--transition),
+    background var(--transition);
 }
 .cmd-block:hover {
   border-color: var(--border-hover);
@@ -265,18 +274,22 @@
   text-overflow: ellipsis;
   padding: 3px 8px;
   border-radius: 4px;
-  transition: color var(--transition), background var(--transition);
+  transition:
+    color var(--transition),
+    background var(--transition);
 }
-.preview-url:hover { color: var(--text-2); background: var(--surface); }
+.preview-url:hover {
+  color: var(--text-2);
+  background: var(--surface);
+}
 
 /* Error state */
 .error-msg {
   font-size: 13px;
   color: var(--accent);
-  background: rgba(255,77,28,0.06);
-  border: 1px solid rgba(255,77,28,0.15);
+  background: rgba(255, 77, 28, 0.06);
+  border: 1px solid rgba(255, 77, 28, 0.15);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
   margin-bottom: 16px;
 }
-

@@ -177,7 +177,7 @@ class ViperGirlsDownloader {
       let href = titleTag.attr("href") || "";
       if (href && !href.startsWith("http"))
         href = "https://viper.to/" + href.replace(/^\//, "");
-      
+
       // Normalize URL by stripping session tokens and highlights
       // Thread urls look like: "https://viper.to/threads/16140685-Eve-Sweet?s=4bb1e..."
       href = href.replace(/\?.*$/, "");
@@ -283,8 +283,13 @@ class ViperGirlsDownloader {
 
         // Fallback 2: parse from "Today" or "Yesterday" relative dates
         if (!timestamp) {
-          const normText = (titleAttr || labelText || "").replace(/[\s\u00a0]+/g, " ");
-          const relativeMatch = normText.match(/\b(today|yesterday)\b\s*(?:at\s*)?,?\s*(\d{1,2}):(\d{2})(?:\s*(am|pm))?/i);
+          const normText = (titleAttr || labelText || "").replace(
+            /[\s\u00a0]+/g,
+            " ",
+          );
+          const relativeMatch = normText.match(
+            /\b(today|yesterday)\b\s*(?:at\s*)?,?\s*(\d{1,2}):(\d{2})(?:\s*(am|pm))?/i,
+          );
           if (relativeMatch) {
             const [, dayWord, hour, minute, ampm] = relativeMatch;
             const date = new Date();

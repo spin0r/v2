@@ -27,7 +27,7 @@
 }
 
 .hero-eyebrow::before {
-  content: '';
+  content: "";
   width: 6px;
   height: 6px;
   background: var(--accent);
@@ -36,7 +36,6 @@
 }
 
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
@@ -204,13 +203,17 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 6px 6px 6px 20px;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition:
+    border-color var(--transition),
+    box-shadow var(--transition);
   gap: 10px;
 }
 
 .search-box:focus-within {
   border-color: rgba(192, 133, 50, 0.4);
-  box-shadow: 0 0 0 3px rgba(192, 133, 50, 0.08), 0 0 40px rgba(192, 133, 50, 0.06);
+  box-shadow:
+    0 0 0 3px rgba(192, 133, 50, 0.08),
+    0 0 40px rgba(192, 133, 50, 0.06);
 }
 
 .search-icon {
@@ -426,4 +429,3 @@ main {
   opacity: 0.3;
   cursor: not-allowed;
 }
-

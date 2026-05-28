@@ -1,156 +1,278 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Viper API — AI Renamer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/docs/assets/style.css">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Viper API — AI Renamer</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/top.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/docs/assets/style.css" />
+    <script>history.scrollRestoration='manual'</script>
 </head>
-<body>
-  <nav>
-    <a class="nav-logo" href="/">
-      <span>Viper</span>
-      <span class="nav-badge">API</span>
-    </a>
-  </nav>
+  <body>
+    <nav>
+      <a class="nav-logo" href="/">
+        <img src="/web.svg" alt="Docs" />
+        <span>Docs</span>
+      </a>
+    </nav>
 
-  <div class="container">
-    <div class="hero-eyebrow">API Reference</div>
-    <h1>AI <span>Renamer</span></h1>
-    <p class="hero-sub">Convert raw scene descriptions into clean, standardized filenames using AI. Works from anywhere — scripts, bots, extensions, or any HTTP client.</p>
+    <div class="container">
+      <div class="hero-eyebrow">API Reference</div>
+      <h1>AI <span>Renamer</span></h1>
+      <p class="hero-sub">
+        Convert raw scene descriptions into clean, standardized filenames using
+        AI. Works from anywhere — scripts, bots, extensions, or any HTTP client.
+      </p>
 
-    <!-- Endpoint -->
-    <div class="section">
-      <div class="section-title">Endpoint</div>
-      <div class="endpoint-card">
-        <div class="endpoint-row">
-          <span class="method-badge method-post">POST</span>
-          <span class="endpoint-path" id="endpoint-url">/api/ai-rename</span>
+      <!-- Endpoint -->
+      <div class="section">
+        <div class="section-title">Endpoint</div>
+        <div class="endpoint-card">
+          <div class="endpoint-row">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path" id="endpoint-url">/api/ai-rename</span>
+          </div>
+          <p class="endpoint-desc">
+            Takes one or more scene descriptions and returns properly formatted
+            filenames. Supports multi-line input — each line is processed
+            independently.
+          </p>
         </div>
-        <p class="endpoint-desc">Takes one or more scene descriptions and returns properly formatted filenames. Supports multi-line input — each line is processed independently.</p>
+      </div>
+
+      <!-- Request -->
+      <div class="section">
+        <div class="section-title">Request Body</div>
+        <table class="params-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>text <span class="required">REQUIRED</span></td>
+              <td>string</td>
+              <td>
+                Raw scene description(s). Multiple lines will each be renamed
+                separately.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <button class="code-copy" onclick="copyCode(this)">Copy</button
+          ><span class="comment">// Content-Type: application/json</span>
+          {
+          <span class="key">"text"</span>:
+          <span class="str"
+            >"Luna Star -- @Brazzers -- Luna Gets Wild -- 2024-03-20"</span
+          >
+          }
+        </div>
+      </div>
+
+      <!-- Response -->
+      <div class="section">
+        <div class="section-title">Response</div>
+        <table class="params-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>ok</td>
+              <td>boolean</td>
+              <td>Whether the rename was successful</td>
+            </tr>
+            <tr>
+              <td>result</td>
+              <td>string</td>
+              <td>The formatted filename(s), one per line</td>
+            </tr>
+            <tr>
+              <td>error</td>
+              <td>string</td>
+              <td>Error message (only when ok is false)</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="code-block">
+          <button class="code-copy" onclick="copyCode(this)">Copy</button>{
+          <span class="key">"ok"</span>: <span class="bool">true</span>,
+          <span class="key">"result"</span>:
+          <span class="str">"Brazzers.24.03.20.Luna.Star.Gets.Wild"</span> }
+        </div>
+      </div>
+
+      <!-- Output Format -->
+      <div class="section">
+        <div class="section-title">Output Format</div>
+        <div class="code-block">
+          <span class="str"
+            >Studio.YY.MM.DD.Performer.Name.Scene.Title.Words</span
+          >
+
+          <span class="comment">// Examples:</span>
+          <span class="str">"Brazzers.24.03.20.Luna.Star.Gets.Wild"</span>
+          <span class="str"
+            >"Dogfart.BlacksOnBlondes.23.08.18.Scarlett.Alexis.Business.Opportunity"</span
+          >
+          <span class="str"
+            >"Vixen.24.03.15.Kendra.Sunderland.A.Perfect.Day"</span
+          >
+        </div>
+      </div>
+
+      <!-- Code Examples -->
+      <div class="section">
+        <div class="section-title">Examples</div>
+        <div class="tabs">
+          <button class="tab active" onclick="switchTab(event, 'tab-curl')">
+            cURL
+          </button>
+          <button class="tab" onclick="switchTab(event, 'tab-js')">
+            JavaScript
+          </button>
+          <button class="tab" onclick="switchTab(event, 'tab-py')">
+            Python
+          </button>
+          <button class="tab" onclick="switchTab(event, 'tab-ps')">
+            PowerShell
+          </button>
+        </div>
+
+        <div id="tab-curl" class="tab-content active">
+          <div class="code-block tab-code">
+            <button class="code-copy" onclick="copyCode(this)">Copy</button>curl
+            -X POST <span class="str api-url"></span>/api/ai-rename \ -H
+            <span class="str">"Content-Type: application/json"</span> \ -d
+            <span class="str"
+              >'{"text": "Vixen Kendra Sunderland A Perfect Day 03 15 24
+              2160p"}'</span
+            >
+          </div>
+        </div>
+
+        <div id="tab-js" class="tab-content">
+          <div class="code-block tab-code">
+            <button class="code-copy" onclick="copyCode(this)">Copy</button
+            ><span class="key">const</span> res =
+            <span class="key">await</span> fetch(<span class="str"
+              >'/api/ai-rename'</span
+            >, { method: <span class="str">'POST'</span>, headers: {
+            <span class="str">'Content-Type'</span>:
+            <span class="str">'application/json'</span> }, body:
+            JSON.stringify({ text:
+            <span class="str">'your scene description'</span> }) });
+            <span class="key">const</span> { ok, result } =
+            <span class="key">await</span> res.json(); console.log(result);
+          </div>
+        </div>
+
+        <div id="tab-py" class="tab-content">
+          <div class="code-block tab-code">
+            <button class="code-copy" onclick="copyCode(this)">Copy</button
+            ><span class="key">import</span> requests r = requests.post(<span
+              class="str api-url-py"
+              >""</span
+            >, json={ <span class="str">"text"</span>:
+            <span class="str"
+              >"Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p"</span
+            >
+            }) data = r.json() print(data[<span class="str">"result"</span>])
+          </div>
+        </div>
+
+        <div id="tab-ps" class="tab-content">
+          <div class="code-block tab-code">
+            <button class="code-copy" onclick="copyCode(this)">Copy</button
+            >$body = @{ text =
+            <span class="str"
+              >"Vixen Kendra Sunderland A Perfect Day 03 15 24"</span
+            >
+            } | ConvertTo-Json Invoke-RestMethod -Uri
+            <span class="str api-url-ps">""</span> ` -Method POST -ContentType
+            <span class="str">"application/json"</span> -Body $body
+          </div>
+        </div>
+      </div>
+
+      <!-- Errors -->
+      <div class="section">
+        <div class="section-title">Error Codes</div>
+        <table class="params-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Reason</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>400</td>
+              <td>string</td>
+              <td>
+                Missing or empty
+                <code style="color: var(--accent-2)">text</code> field, or
+                invalid JSON body
+              </td>
+            </tr>
+            <tr>
+              <td>500</td>
+              <td>string</td>
+              <td>
+                Server-side error — missing API key, prompt load failure, or AI
+                provider error
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Try it -->
+      <div class="try-section">
+        <div class="try-title"><span class="dot"></span> Try it live</div>
+        <textarea
+          class="try-input"
+          id="try-input"
+          placeholder="Paste a scene description here…&#10;e.g. Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p"
+        ></textarea>
+        <div class="try-actions">
+          <button class="try-btn" id="try-btn" onclick="tryRename()">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+            Rename
+          </button>
+        </div>
+        <div class="try-output" id="try-output" style="display: none">
+          <div class="try-output-label">Result</div>
+          <div class="try-result" id="try-result"></div>
+        </div>
       </div>
     </div>
 
-    <!-- Request -->
-    <div class="section">
-      <div class="section-title">Request Body</div>
-      <table class="params-table">
-        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr>
-            <td>text <span class="required">REQUIRED</span></td>
-            <td>string</td>
-            <td>Raw scene description(s). Multiple lines will each be renamed separately.</td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="comment">// Content-Type: application/json</span>
-{
-  <span class="key">"text"</span>: <span class="str">"Luna Star -- @Brazzers -- Luna Gets Wild -- 2024-03-20"</span>
-}</div>
-    </div>
-
-    <!-- Response -->
-    <div class="section">
-      <div class="section-title">Response</div>
-      <table class="params-table">
-        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td>ok</td><td>boolean</td><td>Whether the rename was successful</td></tr>
-          <tr><td>result</td><td>string</td><td>The formatted filename(s), one per line</td></tr>
-          <tr><td>error</td><td>string</td><td>Error message (only when ok is false)</td></tr>
-        </tbody>
-      </table>
-      <div class="code-block"><button class="code-copy" onclick="copyCode(this)">Copy</button>{
-  <span class="key">"ok"</span>: <span class="bool">true</span>,
-  <span class="key">"result"</span>: <span class="str">"Brazzers.24.03.20.Luna.Star.Gets.Wild"</span>
-}</div>
-    </div>
-
-    <!-- Output Format -->
-    <div class="section">
-      <div class="section-title">Output Format</div>
-      <div class="code-block"><span class="str">Studio.YY.MM.DD.Performer.Name.Scene.Title.Words</span>
-
-<span class="comment">// Examples:</span>
-<span class="str">"Brazzers.24.03.20.Luna.Star.Gets.Wild"</span>
-<span class="str">"Dogfart.BlacksOnBlondes.23.08.18.Scarlett.Alexis.Business.Opportunity"</span>
-<span class="str">"Vixen.24.03.15.Kendra.Sunderland.A.Perfect.Day"</span></div>
-    </div>
-
-    <!-- Code Examples -->
-    <div class="section">
-      <div class="section-title">Examples</div>
-      <div class="tabs">
-        <button class="tab active" onclick="switchTab(event, 'tab-curl')">cURL</button>
-        <button class="tab" onclick="switchTab(event, 'tab-js')">JavaScript</button>
-        <button class="tab" onclick="switchTab(event, 'tab-py')">Python</button>
-        <button class="tab" onclick="switchTab(event, 'tab-ps')">PowerShell</button>
-      </div>
-
-      <div id="tab-curl" class="tab-content active">
-        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button>curl -X POST <span class="str api-url"></span>/api/ai-rename \
-  -H <span class="str">"Content-Type: application/json"</span> \
-  -d <span class="str">'{"text": "Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p"}'</span></div>
-      </div>
-
-      <div id="tab-js" class="tab-content">
-        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="key">const</span> res = <span class="key">await</span> fetch(<span class="str">'/api/ai-rename'</span>, {
-  method: <span class="str">'POST'</span>,
-  headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  body: JSON.stringify({ text: <span class="str">'your scene description'</span> })
-});
-<span class="key">const</span> { ok, result } = <span class="key">await</span> res.json();
-console.log(result);</div>
-      </div>
-
-      <div id="tab-py" class="tab-content">
-        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button><span class="key">import</span> requests
-
-r = requests.post(<span class="str api-url-py">""</span>, json={
-    <span class="str">"text"</span>: <span class="str">"Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p"</span>
-})
-data = r.json()
-print(data[<span class="str">"result"</span>])</div>
-      </div>
-
-      <div id="tab-ps" class="tab-content">
-        <div class="code-block tab-code"><button class="code-copy" onclick="copyCode(this)">Copy</button>$body = @{ text = <span class="str">"Vixen Kendra Sunderland A Perfect Day 03 15 24"</span> } | ConvertTo-Json
-Invoke-RestMethod -Uri <span class="str api-url-ps">""</span> `
-  -Method POST -ContentType <span class="str">"application/json"</span> -Body $body</div>
-      </div>
-    </div>
-
-    <!-- Errors -->
-    <div class="section">
-      <div class="section-title">Error Codes</div>
-      <table class="params-table">
-        <thead><tr><th>Status</th><th>Reason</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td>400</td><td>string</td><td>Missing or empty <code style="color:var(--accent-2)">text</code> field, or invalid JSON body</td></tr>
-          <tr><td>500</td><td>string</td><td>Server-side error — missing API key, prompt load failure, or AI provider error</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Try it -->
-    <div class="try-section">
-      <div class="try-title"><span class="dot"></span> Try it live</div>
-      <textarea class="try-input" id="try-input" placeholder="Paste a scene description here…&#10;e.g. Vixen Kendra Sunderland A Perfect Day 03 15 24 2160p"></textarea>
-      <div class="try-actions">
-        <button class="try-btn" id="try-btn" onclick="tryRename()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Rename
-        </button>
-      </div>
-      <div class="try-output" id="try-output" style="display:none">
-        <div class="try-output-label">Result</div>
-        <div class="try-result" id="try-result"></div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/docs/assets/app.js"></script>
-</body>
+    <script src="/docs/assets/app.js"></script>
+  </body>
 </html>

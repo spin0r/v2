@@ -4,13 +4,7 @@ const {
   ViperGirlsDownloader,
   AdultPhotoSetsScraper,
 } = require("../../core/scraper");
-const {
-  md5,
-  vgCache,
-  apsCache,
-  sendJSON,
-  PAGE_SIZE,
-} = require("../utils");
+const { md5, vgCache, apsCache, sendJSON, PAGE_SIZE } = require("../utils");
 
 // ── VG SEARCH ──
 async function handleVgSearch(params, res) {
@@ -21,11 +15,15 @@ async function handleVgSearch(params, res) {
   // Parse optional forums param (comma-separated IDs), default to all 3
   const forumsParam = params.get("forums");
   const forums = forumsParam
-    ? forumsParam.split(",").map(Number).filter(n => [302, 303, 304].includes(n))
+    ? forumsParam
+        .split(",")
+        .map(Number)
+        .filter((n) => [302, 303, 304].includes(n))
     : [302, 303, 304];
-  if (!forums.length) return sendJSON(res, 400, { error: "No valid forums selected" });
+  if (!forums.length)
+    return sendJSON(res, 400, { error: "No valid forums selected" });
 
-  const key = `${query.toLowerCase()}:${forums.sort().join(',')}`;
+  const key = `${query.toLowerCase()}:${forums.sort().join(",")}`;
   let results;
 
   if (vgCache.has(key)) {
@@ -34,16 +32,23 @@ async function handleVgSearch(params, res) {
     const downloader = new ViperGirlsDownloader();
     const all = [];
     try {
-      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       for (let i = 0; i < forums.length; i++) {
         if (i > 0) await sleep(16000); // 16s flood-control delay between forum searches
-        const [res2, searchid, totalPages, perPage] = await downloader.searchForum(query, [forums[i]]);
+        const [res2, searchid, totalPages, perPage] =
+          await downloader.searchForum(query, [forums[i]]);
         if (res2.length) all.push(...res2);
         for (let p = 2; p <= totalPages; p++) {
           try {
-            const [more] = await downloader.searchForumPage(searchid, p, perPage);
+            const [more] = await downloader.searchForumPage(
+              searchid,
+              p,
+              perPage,
+            );
             if (more.length) all.push(...more);
-          } catch { break; }
+          } catch {
+            break;
+          }
         }
       }
     } catch (err) {
@@ -51,9 +56,13 @@ async function handleVgSearch(params, res) {
     }
     const seen = new Set();
     results = all
-      .filter(r => { if (seen.has(r.url)) return false; seen.add(r.url); return true; })
+      .filter((r) => {
+        if (seen.has(r.url)) return false;
+        seen.add(r.url);
+        return true;
+      })
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-      .map(r => {
+      .map((r) => {
         const prefix = r.prefix ? `[${r.prefix}] ` : "";
         const title = prefix + r.title;
         return { ...r, title, sgenId: md5(r.url).slice(0, 6) };
@@ -82,7 +91,7 @@ async function handleApsSearch(params, res) {
   } else {
     const scraper = new AdultPhotoSetsScraper();
     const raw = await scraper.searchAll(query);
-    results = raw.map(r => ({ ...r, apsId: md5(r.url).slice(0, 6) }));
+    results = raw.map((r) => ({ ...r, apsId: md5(r.url).slice(0, 6) }));
     apsCache.set(key, results);
   }
 

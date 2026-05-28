@@ -23,15 +23,29 @@ const {
 
 // Derive a search query from a thread URL slug
 function slugToQuery(url) {
-  const STOP_WORDS = new Set(['galleries', 'gallery', 'thread', 'threads', 'collection',
-    'sets', 'set', 'pics', 'images', 'photos', 'pack', 'mega', 'vol', 'part']);
-  const slugMatch = url.match(/\/threads\/([^/\?]+)/i) ||
-                    url.match(/\/([^/]+)\/?$/);
+  const STOP_WORDS = new Set([
+    "galleries",
+    "gallery",
+    "thread",
+    "threads",
+    "collection",
+    "sets",
+    "set",
+    "pics",
+    "images",
+    "photos",
+    "pack",
+    "mega",
+    "vol",
+    "part",
+  ]);
+  const slugMatch =
+    url.match(/\/threads\/([^/\?]+)/i) || url.match(/\/([^/]+)\/?$/);
   if (!slugMatch) return null;
   const slug = slugMatch[1];
-  const parts = slug.split('-').filter(p => p && !/^\d+$/.test(p));
-  const words = parts.filter(p => !STOP_WORDS.has(p.toLowerCase()));
-  return words.length ? words.join(' ') : null;
+  const parts = slug.split("-").filter((p) => p && !/^\d+$/.test(p));
+  const words = parts.filter((p) => !STOP_WORDS.has(p.toLowerCase()));
+  return words.length ? words.join(" ") : null;
 }
 
 // ── VG SCRAPE (scrape thread → return post list, no extraction) ──
@@ -42,17 +56,25 @@ async function handleVgScrape(params, res) {
 
   let found = null;
   for (const results of vgCache.values()) {
-    found = results.find(r => r.sgenId === id);
+    found = results.find((r) => r.sgenId === id);
     if (found) break;
   }
-  if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
+  if (!found)
+    return sendJSON(res, 404, { error: "ID not found – run search first" });
 
   const downloader = new ViperGirlsDownloader();
   const [pagesData, totalPages] = await downloader.scrapeThread(found.url);
   const title = found.title || pagesData[0]?.posts[0]?.title || found.url;
   const threadId = md5(found.url).slice(0, 8);
 
-  const threadData = { url: found.url, title, searchQuery: query || null, pages: pagesData, totalPages, type: 'vg' };
+  const threadData = {
+    url: found.url,
+    title,
+    searchQuery: query || null,
+    pages: pagesData,
+    totalPages,
+    type: "vg",
+  };
   threadCache.set(threadId, threadData);
 
   sendJSON(res, 200, { ok: true, threadId, threadData });
@@ -67,30 +89,37 @@ async function handleVgFetch(params, res) {
 
   let found = null;
   for (const results of vgCache.values()) {
-    found = results.find(r => r.sgenId === id);
+    found = results.find((r) => r.sgenId === id);
     if (found) break;
   }
-  if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
+  if (!found)
+    return sendJSON(res, 404, { error: "ID not found – run search first" });
 
   if (stream) {
     startSSE(res);
-    sendSSE(res, 'phase', { phase: 'scraping' });
+    sendSSE(res, "phase", { phase: "scraping" });
   }
 
   const downloader = new ViperGirlsDownloader();
   const [pagesData] = await downloader.scrapeThread(found.url);
-  const allLinks = pagesData.flatMap(p => p.posts.flatMap(q => q.links));
+  const allLinks = pagesData.flatMap((p) => p.posts.flatMap((q) => q.links));
 
   if (stream) {
-    sendSSE(res, 'phase', { phase: 'extracting', total: allLinks.length });
+    sendSSE(res, "phase", { phase: "extracting", total: allLinks.length });
   }
 
-  const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
-  const result = await extractAndUpload(allLinks, found.title, found.url, query || null, onProgress);
+  const onProgress = stream ? (p) => sendSSE(res, "progress", p) : null;
+  const result = await extractAndUpload(
+    allLinks,
+    found.title,
+    found.url,
+    query || null,
+    onProgress,
+  );
   if (result.ok) addToHistory(result);
 
   if (stream) {
-    sendSSE(res, 'done', result);
+    sendSSE(res, "done", result);
     res.end();
   } else {
     sendJSON(res, 200, result);
@@ -106,29 +135,36 @@ async function handleApsFetch(params, res) {
 
   let found = null;
   for (const results of apsCache.values()) {
-    found = results.find(r => r.apsId === id);
+    found = results.find((r) => r.apsId === id);
     if (found) break;
   }
-  if (!found) return sendJSON(res, 404, { error: "ID not found – run search first" });
+  if (!found)
+    return sendJSON(res, 404, { error: "ID not found – run search first" });
 
   if (stream) {
     startSSE(res);
-    sendSSE(res, 'phase', { phase: 'scraping' });
+    sendSSE(res, "phase", { phase: "scraping" });
   }
 
   const scraper = new AdultPhotoSetsScraper();
   const links = await scraper.getPostLinks(found.url);
 
   if (stream) {
-    sendSSE(res, 'phase', { phase: 'extracting', total: links.length });
+    sendSSE(res, "phase", { phase: "extracting", total: links.length });
   }
 
-  const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
-  const result = await extractAndUpload(links, found.title, found.url, query || null, onProgress);
+  const onProgress = stream ? (p) => sendSSE(res, "progress", p) : null;
+  const result = await extractAndUpload(
+    links,
+    found.title,
+    found.url,
+    query || null,
+    onProgress,
+  );
   if (result.ok) addToHistory(result);
 
   if (stream) {
-    sendSSE(res, 'done', result);
+    sendSSE(res, "done", result);
     res.end();
   } else {
     sendJSON(res, 200, result);
@@ -147,7 +183,14 @@ async function handleDirectFetch(params, res) {
       const title = pagesData[0]?.posts[0]?.title || url;
       const threadId = md5(url).slice(0, 8);
 
-      const threadData = { url, title, searchQuery: null, pages: pagesData, totalPages, type: 'vg' };
+      const threadData = {
+        url,
+        title,
+        searchQuery: null,
+        pages: pagesData,
+        totalPages,
+        type: "vg",
+      };
       threadCache.set(threadId, threadData);
 
       return sendJSON(res, 200, { ok: true, threadId, threadData });
@@ -157,16 +200,30 @@ async function handleDirectFetch(params, res) {
       const scraper = new AdultPhotoSetsScraper();
       const links = await scraper.getPostLinks(url);
       const titleMatch = url.match(/\/([^/]+)\/?$/);
-      const title = titleMatch ? titleMatch[1].replace(/-/g, ' ') : url;
+      const title = titleMatch ? titleMatch[1].replace(/-/g, " ") : url;
       const threadId = md5(url).slice(0, 8);
 
-      const threadData = { url, title, searchQuery: null, pages: [{ page_num: 1, posts: [{ title: 'Main Post', links, count: links.length }] }], totalPages: 1, type: 'aps' };
+      const threadData = {
+        url,
+        title,
+        searchQuery: null,
+        pages: [
+          {
+            page_num: 1,
+            posts: [{ title: "Main Post", links, count: links.length }],
+          },
+        ],
+        totalPages: 1,
+        type: "aps",
+      };
       threadCache.set(threadId, threadData);
 
       return sendJSON(res, 200, { ok: true, threadId, threadData });
     }
 
-    sendJSON(res, 400, { error: "URL must be from vipergirls.to / viper.to or adultphotosets" });
+    sendJSON(res, 400, {
+      error: "URL must be from vipergirls.to / viper.to or adultphotosets",
+    });
   } catch (err) {
     console.error("[Direct Fetch Error]", err.message);
     sendJSON(res, 500, { error: err.message });
@@ -181,7 +238,9 @@ async function handleThreadExtract(params, res) {
   if (!threadId) return sendJSON(res, 400, { error: "Missing threadId" });
 
   if (!threadCache.has(threadId)) {
-    return sendJSON(res, 404, { error: "Thread not found or expired. Please search again." });
+    return sendJSON(res, 404, {
+      error: "Thread not found or expired. Please search again.",
+    });
   }
 
   const threadData = threadCache.get(threadId);
@@ -204,23 +263,29 @@ async function handleThreadExtract(params, res) {
 
   if (stream) {
     startSSE(res);
-    sendSSE(res, 'phase', { phase: 'extracting', total: post.links.length });
+    sendSSE(res, "phase", { phase: "extracting", total: post.links.length });
   }
 
   try {
-    const onProgress = stream ? (p) => sendSSE(res, 'progress', p) : null;
-    const result = await extractAndUpload(post.links, title, threadData.url, threadData.searchQuery || null, onProgress);
+    const onProgress = stream ? (p) => sendSSE(res, "progress", p) : null;
+    const result = await extractAndUpload(
+      post.links,
+      title,
+      threadData.url,
+      threadData.searchQuery || null,
+      onProgress,
+    );
     if (result.ok) addToHistory(result);
 
     if (stream) {
-      sendSSE(res, 'done', result);
+      sendSSE(res, "done", result);
       res.end();
     } else {
       sendJSON(res, 200, result);
     }
   } catch (err) {
     if (stream) {
-      sendSSE(res, 'error', { error: err.message });
+      sendSSE(res, "error", { error: err.message });
       res.end();
     } else {
       sendJSON(res, 500, { error: err.message });
@@ -232,17 +297,32 @@ async function handleThreadExtract(params, res) {
 async function handleReExtract(req, res) {
   const body = await readBody(req);
   let parsed;
-  try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return sendJSON(res, 400, { error: "Invalid JSON" });
+  }
 
-  const { failedLinks, previousUrls, indexedFailedLinks, indexedUrls, title, sourceUrl, searchQuery } = parsed;
+  const {
+    failedLinks,
+    previousUrls,
+    indexedFailedLinks,
+    indexedUrls,
+    title,
+    sourceUrl,
+    searchQuery,
+  } = parsed;
   if (!failedLinks || !failedLinks.length) {
     return sendJSON(res, 400, { error: "No failed links to retry" });
   }
 
   // Use indexed data if available for position-aware merging
-  const hasIndexedData = indexedFailedLinks && indexedFailedLinks.length > 0 && indexedUrls;
+  const hasIndexedData =
+    indexedFailedLinks && indexedFailedLinks.length > 0 && indexedUrls;
   const prevUrls = previousUrls || [];
-  console.log(`[Re-Extract] Retrying ${failedLinks.length} failed links (${prevUrls.length} previous OK, indexed=${!!hasIndexedData})`);
+  console.log(
+    `[Re-Extract] Retrying ${failedLinks.length} failed links (${prevUrls.length} previous OK, indexed=${!!hasIndexedData})`,
+  );
 
   const extractor = new ImageHostExtractor();
   extractor.client.defaults.timeout = 25000;
@@ -261,7 +341,9 @@ async function handleReExtract(req, res) {
   }
 
   // Process failed links — use indexed entries if available
-  const linksToRetry = hasIndexedData ? indexedFailedLinks : failedLinks.map((link, i) => ({ index: prevUrls.length + i, link }));
+  const linksToRetry = hasIndexedData
+    ? indexedFailedLinks
+    : failedLinks.map((link, i) => ({ index: prevUrls.length + i, link }));
 
   const chunks = [];
   for (let i = 0; i < linksToRetry.length; i += RETRY_CONCURRENCY)
@@ -269,29 +351,33 @@ async function handleReExtract(req, res) {
 
   for (const chunk of chunks) {
     const results = await Promise.allSettled(
-      chunk.map(entry => {
-        const link = typeof entry === 'string' ? entry : entry.link;
-        const index = typeof entry === 'string' ? null : entry.index;
-        return extractor.extractDirectUrl(link).then(u => {
-          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
-          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
-          if (u) {
-            if (hostMatch) hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
-          } else {
+      chunk.map((entry) => {
+        const link = typeof entry === "string" ? entry : entry.link;
+        const index = typeof entry === "string" ? null : entry.index;
+        return extractor
+          .extractDirectUrl(link)
+          .then((u) => {
+            const hostMatch = IMAGE_HOSTS.find((h) => link.includes(h));
+            const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
+            if (u) {
+              if (hostMatch)
+                hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
+            } else {
+              failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
+              stillFailed.push(link);
+              if (index != null) stillFailedIndexed.push({ index, link });
+            }
+            return { link, u, index };
+          })
+          .catch(() => {
+            const hostMatch = IMAGE_HOSTS.find((h) => link.includes(h));
+            const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
             failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
             stillFailed.push(link);
             if (index != null) stillFailedIndexed.push({ index, link });
-          }
-          return { link, u, index };
-        }).catch(() => {
-          const hostMatch = IMAGE_HOSTS.find(h => link.includes(h));
-          const hostName = hostMatch ? hostMatch.split(".")[0] : "unknown";
-          failedHostsMap[hostName] = (failedHostsMap[hostName] || 0) + 1;
-          stillFailed.push(link);
-          if (index != null) stillFailedIndexed.push({ index, link });
-          return { link, u: null, index };
-        });
-      })
+            return { link, u: null, index };
+          });
+      }),
     );
     for (const r of results) {
       if (r.status === "fulfilled" && r.value.u) {
@@ -309,17 +395,18 @@ async function handleReExtract(req, res) {
     allUrls = Object.keys(urlMap)
       .map(Number)
       .sort((a, b) => a - b)
-      .map(i => urlMap[i]);
+      .map((i) => urlMap[i]);
     newlyRecovered = allUrls.length - Object.keys(indexedUrls).length;
   } else {
     // Fallback for old-style calls without indexed data — append at end
-    const recoveredUrls = Object.keys(urlMap).map(k => urlMap[k]);
+    const recoveredUrls = Object.keys(urlMap).map((k) => urlMap[k]);
     allUrls = [...prevUrls, ...recoveredUrls];
     newlyRecovered = recoveredUrls.length;
   }
 
   const totalOriginal = hasIndexedData
-    ? Object.keys(indexedUrls).length + (indexedFailedLinks ? indexedFailedLinks.length : failedLinks.length)
+    ? Object.keys(indexedUrls).length +
+      (indexedFailedLinks ? indexedFailedLinks.length : failedLinks.length)
     : prevUrls.length + failedLinks.length;
 
   if (!allUrls.length) {
@@ -332,7 +419,8 @@ async function handleReExtract(req, res) {
       extracted: 0,
       failed: totalOriginal,
       failedLinks: stillFailed,
-      indexedFailedLinks: stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
+      indexedFailedLinks:
+        stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
       failedHosts: failedHostsMap,
       directUrls: [],
       indexedUrls: undefined,
@@ -366,7 +454,8 @@ async function handleReExtract(req, res) {
     failed: stillFailed.length,
     failedHosts: stillFailed.length > 0 ? failedHostsMap : undefined,
     failedLinks: stillFailed.length > 0 ? stillFailed : undefined,
-    indexedFailedLinks: stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
+    indexedFailedLinks:
+      stillFailedIndexed.length > 0 ? stillFailedIndexed : undefined,
     indexedUrls: Object.keys(urlMap).length > 0 ? urlMap : undefined,
     newlyRecovered,
     services,

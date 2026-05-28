@@ -8,16 +8,26 @@ const { uploadToPaste } = require("../../core/uploader");
 async function handleImxExtract(req, res) {
   const body = await readBody(req);
   let parsed;
-  try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return sendJSON(res, 400, { error: "Invalid JSON" });
+  }
 
   const text = parsed.text || "";
   const imxLinks = text.match(/https?:\/\/imx\.to\/i\/[a-zA-Z0-9]+/g);
-  if (!imxLinks || !imxLinks.length) return sendJSON(res, 400, { error: "No valid imx.to links found" });
+  if (!imxLinks || !imxLinks.length)
+    return sendJSON(res, 400, { error: "No valid imx.to links found" });
 
   console.log(`[IMX Extract] Processing ${imxLinks.length} links`);
   const { directUrls, failed } = await batchExtractDirectUrls(imxLinks);
 
-  if (!directUrls.length) return sendJSON(res, 200, { ok: false, error: "Could not extract any direct URLs", total: imxLinks.length });
+  if (!directUrls.length)
+    return sendJSON(res, 200, {
+      ok: false,
+      error: "Could not extract any direct URLs",
+      total: imxLinks.length,
+    });
 
   // Upload to paste
   const content = directUrls.join("\n");
@@ -39,7 +49,11 @@ async function handleImxExtract(req, res) {
 async function handleImxUpload(req, res) {
   const body = await readBody(req);
   let parsed;
-  try { parsed = JSON.parse(body); } catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return sendJSON(res, 400, { error: "Invalid JSON" });
+  }
 
   const pbUrl = (parsed.url || "").trim();
   if (!pbUrl) return sendJSON(res, 400, { error: "Missing paste URL" });
@@ -54,17 +68,26 @@ async function handleImxUpload(req, res) {
     return sendJSON(res, 400, { error: `Failed to fetch paste: ${e.message}` });
   }
 
-  const imageUrls = String(pasteData).split("\n").map(l => l.trim()).filter(l => l && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(l));
-  if (!imageUrls.length) return sendJSON(res, 400, { error: "No image URLs found in the paste" });
+  const imageUrls = String(pasteData)
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(l));
+  if (!imageUrls.length)
+    return sendJSON(res, 400, { error: "No image URLs found in the paste" });
 
   console.log(`[IMX Upload] Uploading ${imageUrls.length} images`);
   const { results, galleryId } = await batchUploadToImx(imageUrls);
-  const successResults = results.filter(r => r.imx_url);
+  const successResults = results.filter((r) => r.imx_url);
 
-  if (!successResults.length) return sendJSON(res, 200, { ok: false, error: "All uploads failed", total: imageUrls.length });
+  if (!successResults.length)
+    return sendJSON(res, 200, {
+      ok: false,
+      error: "All uploads failed",
+      total: imageUrls.length,
+    });
 
   // Extract direct URLs from new IMX viewer pages
-  const imxViewerLinks = successResults.map(r => r.imx_url);
+  const imxViewerLinks = successResults.map((r) => r.imx_url);
   const { directUrls } = await batchExtractDirectUrls(imxViewerLinks, null, 25);
 
   // Upload results to paste

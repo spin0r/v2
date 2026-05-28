@@ -107,12 +107,22 @@ function handleHealth(params, res) {
 function handleStaticRoutes(pathname, req, res) {
   const rootDir = path.join(__dirname, "..", "..", "..");
 
-  // Serve API docs page at /api
-  if (pathname === '/api' || pathname === '/api/') {
-    const docsHtml = path.join(rootDir, 'api-docs.html');
-    if (fs.existsSync(docsHtml)) {
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      fs.createReadStream(docsHtml).pipe(res);
+  // Serve docs landing and all doc pages under /docs/*
+  if (pathname === '/docs' || pathname === '/docs/') {
+    const f = path.join(rootDir, 'docs', 'home', 'index.html');
+    if (fs.existsSync(f)) { res.writeHead(200, { 'Content-Type': 'text/html' }); fs.createReadStream(f).pipe(res); return true; }
+  }
+  if (pathname.startsWith('/docs/')) {
+    // Try exact file first, then directory index
+    let filePath = path.join(rootDir, pathname);
+    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+      filePath = path.join(rootDir, pathname.replace(/\/$/, ''), 'index.html');
+    }
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+      const ext = path.extname(filePath);
+      const mimeTypes = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+      res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
+      fs.createReadStream(filePath).pipe(res);
       return true;
     }
   }

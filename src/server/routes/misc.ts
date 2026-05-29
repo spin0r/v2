@@ -69,7 +69,7 @@ export function handleHealth(_params: URLSearchParams, res: ServerResponse): voi
 }
 
 export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res: ServerResponse): boolean {
-  const rootDir = path.join(__dirname, "..", "..", "..", "..");
+  const rootDir = path.join(__dirname, "..", "..", "..");
 
   if (/\.(svg|png|ico|webp|jpg)$/.test(pathname)) {
     const f = path.join(rootDir, "public", pathname);

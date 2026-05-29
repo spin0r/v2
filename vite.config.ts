@@ -40,9 +40,9 @@ export default defineConfig({
     cssCodeSplit: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['zustand', 'clsx', 'react-icons'],
-          react: ['react', 'react-dom', 'react-router'],
+        manualChunks: (id) => {
+          if (['react', 'react-dom', 'react-router'].some(p => id.includes(`/node_modules/${p}/`))) return 'react';
+          if (['zustand', 'clsx', 'react-icons'].some(p => id.includes(`/node_modules/${p}/`))) return 'vendor';
         },
       },
     },

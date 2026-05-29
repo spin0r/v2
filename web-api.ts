@@ -8,7 +8,7 @@ import { handleImxExtract, handleImxUpload } from "./src/server/routes/imx.js";
 import { handleAiRename, handleConfig, handleHealth, handleStaticRoutes } from "./src/server/routes/misc.js";
 import { handleCreate, handleEdit, handleRaw, handleGetSnippet } from "./src/server/routes/plain.js";
 
-const PORT = parseInt(process.env.WEB_API_PORT || "3001");
+const PORT = parseInt(process.env.PORT || process.env.WEB_API_PORT || "3001");
 
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {

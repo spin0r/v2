@@ -3,7 +3,7 @@ services:
     name: viper-web
     env: node
     buildCommand: npm install && npm run build
-    startCommand: node web-api.js
+    startCommand: npx tsx web-api.ts
     envVars:
       - key: NODE_ENV
         value: production

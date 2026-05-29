@@ -8,7 +8,6 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="/top.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/docs/assets/style.css" />
     <style>
       .steps {
@@ -118,16 +117,17 @@
         align-items: flex-start;
       }
       .warning::before {
-        content: "⚠";
+        content: '⚠';
         flex-shrink: 0;
       }
     </style>
-    <script>history.scrollRestoration='manual'</script>
-</head>
+    <script>
+      history.scrollRestoration = 'manual';
+    </script>
+  </head>
   <body>
     <nav>
       <a class="nav-logo" href="/">
-        <img src="/web.svg" alt="Docs" />
         <span>Docs</span>
       </a>
     </nav>
@@ -446,23 +446,24 @@
       function copy(btn, text) {
         navigator.clipboard.writeText(text).then(() => {
           // update the Copy button in the same .cmd
-          const copyBtn = btn.classList?.contains("cmd-copy")
+          const copyBtn = btn.classList?.contains('cmd-copy')
             ? btn
-            : btn.querySelector(".cmd-copy");
+            : btn.querySelector('.cmd-copy');
           if (copyBtn) {
-            copyBtn.textContent = "Copied!";
-            setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
+            copyBtn.textContent = 'Copied!';
+            setTimeout(() => (copyBtn.textContent = 'Copy'), 1500);
           }
         });
       }
       // make entire .cmd row clickable
-      document.querySelectorAll(".cmd").forEach((row) => {
-        row.addEventListener("click", (e) => {
-          if (e.target.classList.contains("cmd-copy")) return; // already handled
-          const btn = row.querySelector(".cmd-copy");
+      document.querySelectorAll('.cmd').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          if (e.target.classList.contains('cmd-copy')) return; // already handled
+          const btn = row.querySelector('.cmd-copy');
           if (btn) btn.click();
         });
       });
     </script>
+    <script src="/public/icon-loader.js"></script>
   </body>
 </html>

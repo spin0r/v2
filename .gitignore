@@ -24,4 +24,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Project-specific
 data/history.json
+data/plain/
+plainraw/
+viper-search-*.json
+v2.svg
+snake-svgrepo-com.svg
+prompt.txt
+cursor.html
+*.html.bak
+7551917-*.html
+public/icon.svg
+public/icon copw.svg

@@ -8,14 +8,14 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <link rel="icon" href="/top.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/docs/assets/style.css" />
-    <script>history.scrollRestoration='manual'</script>
-</head>
+    <script>
+      history.scrollRestoration = 'manual';
+    </script>
+  </head>
   <body>
     <nav>
       <a class="nav-logo" href="/">
-        <img src="/web.svg" alt="Docs" />
         <span>Docs</span>
       </a>
     </nav>
@@ -472,48 +472,49 @@
       </div>
     </div>
 
+    <script src="/public/icon-loader.js"></script>
     <script src="/docs/assets/app.js"></script>
     <script>
       async function tryFeed(type) {
-        const btnJson = document.getElementById("try-btn");
-        const btnXml = document.getElementById("try-btn-xml");
-        const output = document.getElementById("try-output");
-        const result = document.getElementById("try-result");
-        const isJson = type === "json";
+        const btnJson = document.getElementById('try-btn');
+        const btnXml = document.getElementById('try-btn-xml');
+        const output = document.getElementById('try-output');
+        const result = document.getElementById('try-result');
+        const isJson = type === 'json';
         const btn = isJson ? btnJson : btnXml;
 
         btn.disabled = true;
         btn.innerHTML = '<div class="spinner"></div> Fetching…';
-        output.style.display = "block";
-        result.className = "try-result empty";
-        result.textContent = "Waiting…";
+        output.style.display = 'block';
+        result.className = 'try-result empty';
+        result.textContent = 'Waiting…';
 
         try {
-          const res = await fetch(isJson ? "/api/rss" : "/api/rss.xml");
+          const res = await fetch(isJson ? '/api/rss' : '/api/rss.xml');
           const text = await res.text();
-          result.className = "try-result";
+          result.className = 'try-result';
           result.textContent = isJson
             ? JSON.stringify(JSON.parse(text), null, 2)
             : text;
         } catch (e) {
-          result.className = "try-result error";
-          result.textContent = "Request failed: " + e.message;
+          result.className = 'try-result error';
+          result.textContent = 'Request failed: ' + e.message;
         }
 
         btn.disabled = false;
         btn.innerHTML = isJson
           ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Fetch JSON'
-          : "Fetch XML";
+          : 'Fetch XML';
       }
 
       // inject base URL into examples
       (function () {
         const base = window.location.origin;
         document
-          .querySelectorAll(".api-url")
+          .querySelectorAll('.api-url')
           .forEach((el) => (el.textContent = base));
         document
-          .querySelectorAll(".api-url-py")
+          .querySelectorAll('.api-url-py')
           .forEach((el) => (el.textContent = '"' + base + '/api/rss"'));
       })();
     </script>

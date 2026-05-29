@@ -84,7 +84,7 @@ export function copyAllCmdBlocks() {
     toast("No commands to copy", "error");
     return;
   }
-  copyText(allTexts.join("\n\n"));
+  copyText(allTexts.map(t => t.trimEnd()).join("\n"));
 }
 
 // ====== EXPORT ======

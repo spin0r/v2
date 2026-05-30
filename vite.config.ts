@@ -2,9 +2,26 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  appType: 'mpa',
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'html-rewrite',
+      configureServer(server) {
+        server.middlewares.use((req, _res, next) => {
+          if (req.url === '/markdown' || req.url === '/markdown/') req.url = '/markdown.html';
+          if (req.url === '/text' || req.url === '/text/') req.url = '/text.html';
+          next();
+        });
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -13,32 +30,21 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/text': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/health': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/docs': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
-      '/plain': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-      },
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/health': { target: 'http://localhost:3001', changeOrigin: true },
+      '/docs': { target: 'http://localhost:3001', changeOrigin: true },
+      '/plain': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
   build: {
     sourcemap: true,
     cssCodeSplit: true,
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        markdown: path.resolve(__dirname, 'markdown.html'),
+        text: path.resolve(__dirname, 'text.html'),
+      },
       output: {
         manualChunks: (id) => {
           if (['react', 'react-dom', 'react-router'].some(p => id.includes(`/node_modules/${p}/`))) return 'react';

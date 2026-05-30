@@ -71,11 +71,14 @@ export function handleHealth(_params: URLSearchParams, res: ServerResponse): voi
 export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res: ServerResponse): boolean {
   const rootDir = path.join(__dirname, "..", "..", "..");
 
-  if (/\.(svg|png|ico|webp|jpg)$/.test(pathname)) {
-    const f = path.join(rootDir, "public", pathname);
+  if (/\.(svg|png|ico|webp|jpg|js)$/.test(pathname)) {
+    // Try rootDir/public/<pathname> first, then rootDir/<pathname>
+    const f = fs.existsSync(path.join(rootDir, "public", pathname))
+      ? path.join(rootDir, "public", pathname)
+      : path.join(rootDir, pathname);
     if (fs.existsSync(f)) {
       const ext = path.extname(f);
-      const mime: Record<string, string> = { ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".webp": "image/webp", ".jpg": "image/jpeg" };
+      const mime: Record<string, string> = { ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".webp": "image/webp", ".jpg": "image/jpeg", ".js": "text/javascript" };
       res.writeHead(200, { "Content-Type": mime[ext] || "application/octet-stream" });
       fs.createReadStream(f).pipe(res);
       return true;

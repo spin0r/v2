@@ -103,7 +103,7 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
 
   const mimeTypes: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg" };
 
-  for (const prefix of ["/docs/", "/text/", "/text"]) {
+  for (const prefix of ["/docs/"]) {
     if (pathname.startsWith(prefix) || pathname === prefix.replace("/", "")) {
       let filePath = path.join(rootDir, pathname);
       if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile())

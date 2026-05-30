@@ -87,6 +87,10 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
     ["/plain/", path.join(rootDir, "plain", "index.html")],
     ["/docs", path.join(rootDir, "docs", "home", "index.html")],
     ["/docs/", path.join(rootDir, "docs", "home", "index.html")],
+    ["/markdown", path.join(rootDir, "markdown.html")],
+    ["/markdown/", path.join(rootDir, "markdown.html")],
+    ["/text", path.join(rootDir, "text.html")],
+    ["/text/", path.join(rootDir, "text.html")],
   ];
   for (const [pat, file] of staticMap) {
     if (pathname === pat && fs.existsSync(file)) {

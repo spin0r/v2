@@ -83,14 +83,14 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
   }
 
   const staticMap: [string | RegExp, string][] = [
-    ["/plain", path.join(rootDir, "plain", "index.html")],
-    ["/plain/", path.join(rootDir, "plain", "index.html")],
+    ["/plain", fs.existsSync(path.join(rootDir, "dist", "plain.html")) ? path.join(rootDir, "dist", "plain.html") : path.join(rootDir, "plain", "index.html")],
+    ["/plain/", fs.existsSync(path.join(rootDir, "dist", "plain.html")) ? path.join(rootDir, "dist", "plain.html") : path.join(rootDir, "plain", "index.html")],
     ["/docs", path.join(rootDir, "docs", "home", "index.html")],
     ["/docs/", path.join(rootDir, "docs", "home", "index.html")],
-    ["/markdown", path.join(rootDir, "markdown.html")],
-    ["/markdown/", path.join(rootDir, "markdown.html")],
-    ["/text", path.join(rootDir, "text.html")],
-    ["/text/", path.join(rootDir, "text.html")],
+    ["/markdown", fs.existsSync(path.join(rootDir, "dist", "markdown.html")) ? path.join(rootDir, "dist", "markdown.html") : path.join(rootDir, "markdown.html")],
+    ["/markdown/", fs.existsSync(path.join(rootDir, "dist", "markdown.html")) ? path.join(rootDir, "dist", "markdown.html") : path.join(rootDir, "markdown.html")],
+    ["/text", fs.existsSync(path.join(rootDir, "dist", "text.html")) ? path.join(rootDir, "dist", "text.html") : path.join(rootDir, "text.html")],
+    ["/text/", fs.existsSync(path.join(rootDir, "dist", "text.html")) ? path.join(rootDir, "dist", "text.html") : path.join(rootDir, "text.html")],
   ];
   for (const [pat, file] of staticMap) {
     if (pathname === pat && fs.existsSync(file)) {
@@ -101,7 +101,8 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
   }
 
   if (pathname.startsWith("/plain/edit/")) {
-    const f = path.join(rootDir, "plain", "edit.html");
+    let f = path.join(rootDir, "dist", "plain.html");
+    if (!fs.existsSync(f)) f = path.join(rootDir, "plain", "edit.html");
     if (fs.existsSync(f)) { res.writeHead(200, { "Content-Type": "text/html" }); fs.createReadStream(f).pipe(res); return true; }
   }
 

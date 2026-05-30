@@ -49,6 +49,7 @@ export interface ThreadPage {
     title?: string;
     count?: number;
     links?: string[];
+    postId?: string;
   }>;
 }
 

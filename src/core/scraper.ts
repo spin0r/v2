@@ -24,6 +24,7 @@ export interface PostData {
   title: string | null;
   links: string[];
   count: number;
+  postId?: string;
 }
 
 export interface PageData {
@@ -67,6 +68,8 @@ export class ViperGirlsDownloader {
     $("li.postbitlegacy").each((_, el) => {
       const id = $(el).attr("id") || "";
       if (id.includes("post_thanks_box")) return;
+      // Extract numeric post ID from element id like "post_167829348"
+      const postId = id.startsWith("post_") ? id.replace("post_", "") : undefined;
       let title: string | null = null;
       for (const [tag, cls] of [["h2", "title"], ["div", "title"]]) {
         const found = $(el).find(`${tag}.${cls}`).first();
@@ -83,7 +86,7 @@ export class ViperGirlsDownloader {
         const href = $(a).attr("href") || "";
         if (IMAGE_HOSTS.some((h) => href.includes(h))) links.push(href);
       });
-      if (links.length) posts.push({ title, links, count: links.length });
+      if (links.length) posts.push({ title, links, count: links.length, postId });
     });
     return posts;
   }

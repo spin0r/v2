@@ -121,6 +121,42 @@ export function copyAllCmdBlocks(): void {
 
 // ====== EXPORT ======
 export async function exportSearchData(): Promise<void> {
+  // Thread view export
+  if (state.threadData) {
+    const d = state.threadData;
+    const threadBaseUrl = (d.url || "").replace(/\/$/, "");
+    const allPosts = d.pages.flatMap((page, pi) =>
+      page.posts.map((p, i) => ({
+        index: d.pages.slice(0, pi).reduce((s, pp) => s + pp.posts.length, 0) + i + 1,
+        title: p.title || `Post #${i + 1}`,
+        count: p.count || p.links?.length || 0,
+        postId: p.postId,
+        directLink: p.postId && threadBaseUrl
+          ? `${threadBaseUrl}?p=${p.postId}&viewfull=1#post${p.postId}`
+          : threadBaseUrl || undefined,
+      }))
+    );
+    const exportData = {
+      title: d.title,
+      url: d.url,
+      totalPages: d.totalPages,
+      totalPosts: allPosts.length,
+      exportedAt: new Date().toISOString(),
+      posts: allPosts,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `viper-thread-${d.title.replace(/[^a-z0-9]/gi, "_").slice(0, 40)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(`Exported ${allPosts.length} posts from thread`, "success");
+    return;
+  }
+
   if (!state.results.length) {
     toast("No results to export", "error");
     return;

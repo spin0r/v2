@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { IncomingMessage, ServerResponse } from "http";
+import axios from "axios";
 import { ImageHostExtractor } from "../core/extractor.js";
 import { uploadToPaste } from "../core/uploader.js";
 import { IMAGE_HOSTS } from "../core/hosts.js";
@@ -111,6 +112,86 @@ export function handleHistory(params: URLSearchParams, res: ServerResponse): voi
   sendJSON(res, 200, { total, page: safePage, totalPages, results: slice });
 }
 
+/** Split AI result into separate hashtags: "Lily Blossom, Matthew Meier" → "#lily_blossom #matthew_meier " */
+export function formatPerformerHashtags(names: string): string {
+  const performers = names.split(/,\s*/).map(n => n.trim()).filter(Boolean);
+  return performers.map(p => "#" + p.toLowerCase().replace(/\s+/g, "_")).join(" ") + " ";
+}
+
+async function getPerformerPrompt(): Promise<string> {
+  const promptUrl = process.env.PERFORMER_PROMPT_URL;
+  if (!promptUrl) throw new Error("PERFORMER_PROMPT_URL not configured in .env");
+  const resp = await axios.get(promptUrl, { timeout: 10000 });
+  return resp.data;
+}
+
+const performerCache = new Map<string, string | null>();
+
+export async function extractPerformerName(title: string): Promise<string | null> {
+  if (!title) return null;
+
+  // Check cache first
+  const cached = performerCache.get(title);
+  if (cached !== undefined) return cached;
+
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
+    console.warn("[Performer Extract] OPENROUTER_API_KEY not configured, skipping");
+    return null;
+  }
+
+  let performerPrompt: string;
+  try { performerPrompt = await getPerformerPrompt(); }
+  catch (e) {
+    console.warn(`[Performer Extract] Failed to load prompt: ${(e as Error).message}`);
+    return null;
+  }
+
+  const FREE_MODELS = [
+    "google/gemini-2.5-flash-lite",
+    "google/gemini-2.0-flash-001",
+    "google/gemma-4-31b-it:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+  ];
+
+  for (const model of FREE_MODELS) {
+    try {
+      const response = await axios.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          model,
+          messages: [
+            { role: "system", content: performerPrompt },
+            { role: "user", content: title },
+          ],
+          temperature: 0.0,
+          max_tokens: 100,
+        },
+        {
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+          timeout: 15000,
+        },
+      );
+      const result = response.data?.choices?.[0]?.message?.content?.trim() || "";
+      if (!result || result === "UNKNOWN") {
+        performerCache.set(title, null);
+        return null;
+      }
+      console.log(`[Performer Extract] "${title}" → "${result}" (${model})`);
+      performerCache.set(title, result);
+      return result;
+    } catch (e) {
+      const code = (e as { response?: { data?: { error?: { code?: number } }; status?: number } }).response?.data?.error?.code || (e as { response?: { status?: number } }).response?.status;
+      if (code === 429 || code === 503) continue;
+      break;
+    }
+  }
+
+  console.warn(`[Performer Extract] All models failed for: "${title}"`);
+  performerCache.set(title, null);
+  return null;
+}
+
 export async function extractAndUpload(
   links: string[],
   title: string,
@@ -217,7 +298,14 @@ export async function extractAndUpload(
   let result = await uploadToPaste(content, 7);
   if (!result.success) result = await uploadToPaste(content, 7);
 
-  const hashtag = searchQuery ? "#" + searchQuery.toLowerCase().replace(/\s+/g, "_") + " " : "";
+  // Extract performer name from title via AI, fall back to searchQuery
+  let hashtag = "";
+  const performerName = await extractPerformerName(title);
+  if (performerName) {
+    hashtag = formatPerformerHashtags(performerName);
+  } else if (searchQuery) {
+    hashtag = "#" + searchQuery.toLowerCase().replace(/\s+/g, "_") + " ";
+  }
 
   return {
     ok: result.success, title, sourceUrl, total,

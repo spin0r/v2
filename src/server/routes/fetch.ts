@@ -5,7 +5,7 @@ import { IMAGE_HOSTS } from "../../core/hosts.js";
 import { uploadToPaste } from "../../core/uploader.js";
 import {
   md5, vgCache, apsCache, threadCache, sendJSON, startSSE, sendSSE,
-  readBody, addToHistory, extractAndUpload, PAGE_SIZE,
+  readBody, addToHistory, extractAndUpload, extractPerformerName, formatPerformerHashtags, PAGE_SIZE,
 } from "../utils.js";
 
 export async function handleVgScrape(params: URLSearchParams, res: ServerResponse): Promise<void> {
@@ -236,7 +236,15 @@ export async function handleReExtract(req: IncomingMessage, res: ServerResponse)
 
   const services = Object.entries(hostCounts).sort((a, b) => b[1] - a[1])
     .map(([host, count]) => { const s = host.split(".")[0]; return count > 1 ? `${s}(${count})` : s; }).join(", ");
-  const hashtag = searchQuery ? "#" + searchQuery.toLowerCase().replace(/\s+/g, "_") + " " : "";
+
+  // Extract performer name from title via AI, fall back to searchQuery
+  let hashtag = "";
+  const performerName = await extractPerformerName(title || "");
+  if (performerName) {
+    hashtag = formatPerformerHashtags(performerName);
+  } else if (searchQuery) {
+    hashtag = "#" + searchQuery.toLowerCase().replace(/\s+/g, "_") + " ";
+  }
 
   const finalResult: Record<string, unknown> = {
     ok: result.success, title: title || "", sourceUrl: sourceUrl || "", total: totalOriginal,

@@ -286,12 +286,7 @@ function renderResults(): string {
   }
 
   if (!state.results.length) {
-    return `
-      <div class="empty-state">
-        ${svgIcon("viper").replace('<svg ', '<svg style="width: 48px; height: 48px; margin-bottom: 16px;" ')}
-        <h3>Start searching</h3>
-        <p>Enter a name or keyword above to find threads.</p>
-      </div>`;
+    return '';
   }
 
   const hasCompletedCmds =

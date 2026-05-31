@@ -4,7 +4,18 @@ import { useStore, activeFile } from './store';
 const SHORTCUTS = [
   ['Ctrl+S', 'Save file'],
   ['Ctrl+N', 'New file'],
-  ['Tab', 'Indent (2 spaces)'],
+  ['Tab / Shift+Tab', 'Indent / Outdent'],
+  ['Ctrl+] / Ctrl+[', 'Indent / Outdent line'],
+  ['Ctrl+/', 'Toggle line comment'],
+  ['Ctrl+L', 'Select line'],
+  ['Ctrl+D', 'Select next occurrence'],
+  ['Ctrl+Shift+K', 'Delete line'],
+  ['Alt+↑ / Alt+↓', 'Move line up / down'],
+  ['Shift+Alt+↑ / ↓', 'Copy line up / down'],
+  ['Ctrl+Enter', 'Insert line below'],
+  ['Ctrl+Shift+Enter', 'Insert line above'],
+  ['Enter', 'Auto-indent / continue list'],
+  ['Home', 'Smart home (toggle indent)'],
   ['Double-click', 'Rename file in sidebar'],
 ];
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { marked } from 'marked';
 import { useStore, activeFile } from './store';
+import { useEditorShortcuts } from './useEditorShortcuts';
 
 marked.setOptions({ breaks: true, gfm: true } as object);
 
@@ -67,19 +68,7 @@ export default function Editor() {
     }
   }, []);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const next = ta.value.substring(0, start) + '  ' + ta.value.substring(end);
-      updateContent(next);
-      requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = start + 2;
-      });
-    }
-  }, [updateContent]);
+  const handleKeyDown = useEditorShortcuts(updateContent);
 
   // focus editor when switching to editor view
   useEffect(() => {

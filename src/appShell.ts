@@ -37,6 +37,7 @@ export interface AppState {
   imxMode: "upload" | "extract";
   imxLoading: boolean;
   imxResult: import("./api.ts").ImxResult | null;
+  imxProgress: { phase: string; done: number; total: number; success: number; fail: number } | null;
   searchStartTime: number | null;
   searchElapsed: number | string;
   fetchingCards: Map<string | number, { extracted: number; total: number; phase: string }>;
@@ -84,6 +85,7 @@ export const state: AppState = {
   imxMode: "upload",
   imxLoading: false,
   imxResult: null,
+  imxProgress: null,
   searchStartTime: null,
   searchElapsed: 0,
   fetchingCards: new Map(),

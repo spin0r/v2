@@ -1,6 +1,6 @@
 import { state, render } from "../appShell.ts";
 import { toast, copyText } from "../utils.ts";
-import { apiImxExtract, apiImxUpload } from "../api.ts";
+import { apiImxExtract, apiImxUploadStream } from "../api.ts";
 
 export function bindImxEvents(appEl: HTMLElement): void {
   // IMX mode tabs
@@ -41,14 +41,43 @@ export function bindImxEvents(appEl: HTMLElement): void {
       if (!url.trim()) return toast("Enter a paste URL first", "error");
       state.imxLoading = true;
       state.imxResult = null;
+      state.imxProgress = null;
       render();
       try {
-        const data = await apiImxUpload(url);
+        const data = await apiImxUploadStream(url, (evt) => {
+          if (evt.type === "phase") {
+            state.imxProgress = { phase: evt.phase || "", done: 0, total: evt.total || 0, success: 0, fail: 0 };
+          } else if (evt.type === "progress" && state.imxProgress) {
+            state.imxProgress = { ...state.imxProgress, done: evt.done || 0, total: evt.total || 0, success: evt.success || 0, fail: evt.fail || 0 };
+          }
+          // Update the progress display without full re-render
+          const progressEl = document.querySelector("#imx-progress");
+          if (progressEl && state.imxProgress) {
+            const p = state.imxProgress;
+            const pct = p.total > 0 ? Math.round((p.done / p.total) * 100) : 0;
+            progressEl.innerHTML = `
+              <div class="imx-progress-header">
+                <div class="imx-progress-phase-row">
+                  <div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>
+                  <div class="imx-progress-phase">${p.phase}</div>
+                </div>
+                <div class="imx-progress-pct">${pct}%</div>
+              </div>
+              <div class="imx-progress-bar-track"><div class="imx-progress-bar-fill" style="width:${pct}%"></div></div>
+              <div class="imx-progress-stats">
+                <span class="imx-progress-stat total">${p.done}/${p.total}</span>
+                <span class="imx-progress-stat success">${p.success} ok</span>
+                <span class="imx-progress-stat fail ${p.fail === 0 ? 'zero' : ''}">${p.fail} failed</span>
+              </div>
+            `;
+          }
+        });
         state.imxResult = data;
       } catch (err) {
         state.imxResult = { ok: false, error: (err as Error).message };
       }
       state.imxLoading = false;
+      state.imxProgress = null;
       render();
     });
 

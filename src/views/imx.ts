@@ -36,6 +36,28 @@ function renderImxView(skipAnim: boolean): string {
       <button class="search-btn" id="imx-upload-btn" style="margin-top:12px;align-self:flex-end" ${state.imxLoading ? "disabled" : ""}>
         ${state.imxLoading ? '<div class="spinner"></div> Uploading…' : `${svgIcon("arrow_right")} Upload to IMX`}
       </button>
+      ${state.imxLoading ? `<div id="imx-progress" class="imx-progress">${state.imxProgress ? (() => {
+        const p = state.imxProgress;
+        const pct = p.total > 0 ? Math.round((p.done / p.total) * 100) : 0;
+        return `
+          <div class="imx-progress-header">
+            <div class="imx-progress-phase-row">
+              <div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>
+              <div class="imx-progress-phase">${p.phase}</div>
+            </div>
+            <div class="imx-progress-pct">${pct}%</div>
+          </div>
+          <div class="imx-progress-bar-track"><div class="imx-progress-bar-fill" style="width:${pct}%"></div></div>
+          <div class="imx-progress-stats">
+            <span class="imx-progress-stat total">${p.done}/${p.total}</span>
+            <span class="imx-progress-stat success">${p.success} ok</span>
+            <span class="imx-progress-stat fail ${p.fail === 0 ? 'zero' : ''}">${p.fail} failed</span>
+          </div>`;
+      })() : `
+          <div class="imx-progress-phase-row">
+            <div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div>
+            <div class="imx-progress-phase">Fetching paste…</div>
+          </div>`}</div>` : ""}
     </div>`;
   }
 

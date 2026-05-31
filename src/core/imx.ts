@@ -1,7 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
 
-const IMX_API_KEY = import.meta.env?.VITE_IMX_API_KEY || "";
+const IMX_API_KEY = process.env.IMX_API_KEY || "";
 const IMX_UPLOAD_URL = "https://api.imx.to/v1/upload.php";
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
 
@@ -19,12 +19,24 @@ export interface ImxUploadResult {
   error?: string;
 }
 
+function detectContentType(filename: string): string {
+  const ext = filename.replace(/\?.*$/, "").split(".").pop()?.toLowerCase() || "";
+  const map: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp", bmp: "image/bmp" };
+  return map[ext] || "image/jpeg";
+}
+
 export async function downloadFile(url: string): Promise<Buffer> {
+  const headers: Record<string, string> = { "User-Agent": UA };
+  // Set Referer for CDN sources that require it
+  try {
+    const u = new URL(url);
+    headers["Referer"] = `${u.protocol}//${u.hostname}/`;
+  } catch { /* ignore */ }
   const res = await axios.get(url, {
     responseType: "arraybuffer",
     maxRedirects: 5,
     timeout: 60000,
-    headers: { "User-Agent": UA },
+    headers,
   });
   return Buffer.from(res.data);
 }
@@ -91,7 +103,7 @@ export async function uploadToImx(
 ): Promise<ImxUploadData> {
   if (!IMX_API_KEY) throw new Error("IMX_API_KEY not set in environment variables");
   const form = new FormData();
-  form.append("image", imageBuffer, { filename, contentType: "application/octet-stream" });
+  form.append("image", imageBuffer, { filename, contentType: detectContentType(filename) });
   if (galleryId) form.append("gallery_id", galleryId);
   else form.append("create_gallery", "true");
   const res = await axios.post(IMX_UPLOAD_URL, form, {

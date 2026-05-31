@@ -17,6 +17,7 @@ export default defineConfig({
         server.middlewares.use((req, _res, next) => {
           if (req.url === '/markdown' || req.url === '/markdown/') req.url = '/markdown.html';
           if (req.url === '/text' || req.url === '/text/') req.url = '/text.html';
+          if (req.url?.startsWith('/plain') && !req.url.startsWith('/plain/api') && !req.url.startsWith('/plain/raw')) req.url = '/plain.html';
           next();
         });
       },
@@ -33,7 +34,8 @@ export default defineConfig({
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
       '/health': { target: 'http://localhost:3001', changeOrigin: true },
       '/docs': { target: 'http://localhost:3001', changeOrigin: true },
-      '/plain': { target: 'http://localhost:3001', changeOrigin: true },
+      '/plain/api': { target: 'http://localhost:3001', changeOrigin: true },
+      '/plain/raw': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
   build: {
@@ -44,6 +46,7 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
         markdown: path.resolve(__dirname, 'markdown.html'),
         text: path.resolve(__dirname, 'text.html'),
+        plain: path.resolve(__dirname, 'plain.html'),
       },
       output: {
         manualChunks: (id) => {

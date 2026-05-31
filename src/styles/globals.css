@@ -2351,7 +2351,7 @@ main {
   position: absolute;
   inset: 0;
   padding: 24px;
-  overflow: hidden;            /* scroll is synced from the textarea */
+  overflow-y: scroll;          /* must match textarea's scrollbar gutter so text wraps at identical widths */
   pointer-events: none;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -2377,7 +2377,7 @@ main {
   line-height: 1.8;
   color: transparent;               /* fully transparent — backdrop provides the visible text */
   caret-color: #d4a04a;             /* accent-coloured caret stays visible */
-  overflow-y: auto;
+  overflow-y: scroll;
   border: none;
   -webkit-text-fill-color: transparent;  /* Safari */
 }

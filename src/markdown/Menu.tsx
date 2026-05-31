@@ -62,41 +62,65 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
   const handleShortcuts = () => {
     onClose();
     onShowModal('Keyboard Shortcuts', (
-      <table className="w-full text-[12px]">
-        <tbody>
-          {SHORTCUTS.map(([k, v]) => (
-            <tr key={k} className="border-b border-[rgba(237,236,228,0.06)]">
-              <td className="py-2 pr-4 font-mono text-[#c08532]">{k}</td>
-              <td className="py-2 text-[rgba(237,236,236,0.6)]">{v}</td>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(237,236,228,0.08)' }}>
+        <table className="w-full text-[13px]" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '42%' }} />
+            <col style={{ width: '58%' }} />
+          </colgroup>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(237,236,228,0.08)', background: 'rgba(237,236,228,0.025)' }}>
+              <th className="py-3 px-6 text-left font-mono text-[10px] text-[rgba(237,236,236,0.35)] uppercase tracking-widest font-medium">Shortcut</th>
+              <th className="py-3 px-6 text-left font-mono text-[10px] text-[rgba(237,236,236,0.35)] uppercase tracking-widest font-medium">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {SHORTCUTS.map(([k, v]) => (
+              <tr key={k} style={{ borderBottom: '1px solid rgba(237,236,228,0.05)' }} className="last:border-0 hover:bg-[rgba(237,236,228,0.015)] transition-colors">
+                <td className="py-3.5 px-6 font-mono text-[#c08532] text-[12px] font-medium">{k}</td>
+                <td className="py-3.5 px-6 text-[rgba(237,236,236,0.7)]">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     ));
   };
 
   const handleCheatsheet = () => {
     onClose();
     onShowModal('Markdown Cheatsheet', (
-      <table className="w-full text-[12px]">
-        <tbody>
-          {CHEATSHEET.map(([k, v]) => (
-            <tr key={k} className="border-b border-[rgba(237,236,228,0.06)]">
-              <td className="py-2 pr-4 font-mono text-[#c08532]">{k}</td>
-              <td className="py-2 text-[rgba(237,236,236,0.6)]">{v}</td>
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(237,236,228,0.08)' }}>
+        <table className="w-full text-[13px]" style={{ tableLayout: 'fixed' }}>
+          <colgroup>
+            <col style={{ width: '38%' }} />
+            <col style={{ width: '62%' }} />
+          </colgroup>
+          <thead>
+            <tr style={{ borderBottom: '1px solid rgba(237,236,228,0.08)', background: 'rgba(237,236,228,0.025)' }}>
+              <th className="py-3 px-6 text-left font-mono text-[10px] text-[rgba(237,236,236,0.35)] uppercase tracking-widest font-medium">Syntax</th>
+              <th className="py-3 px-6 text-left font-mono text-[10px] text-[rgba(237,236,236,0.35)] uppercase tracking-widest font-medium">Result</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {CHEATSHEET.map(([k, v]) => (
+              <tr key={k} style={{ borderBottom: '1px solid rgba(237,236,228,0.05)' }} className="last:border-0 hover:bg-[rgba(237,236,228,0.015)] transition-colors">
+                <td className="py-3.5 px-6 font-mono text-[#c08532] text-[12px] break-all font-medium">{k}</td>
+                <td className="py-3.5 px-6 text-[rgba(237,236,236,0.7)]">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     ));
   };
 
   return (
-    <div
-      ref={ref}
-      style={{ ...style, position: 'fixed', zIndex: 50 }}
-      className="w-48 bg-[#211e15] border border-[rgba(237,236,228,0.1)] rounded-xl shadow-2xl py-1 overflow-hidden"
-    >
+      <div
+        ref={ref}
+        style={{ ...style, position: 'fixed', zIndex: 50, padding: '6px 0' }}
+        className="w-56 bg-[#211e15] border border-[rgba(237,236,228,0.12)] rounded-xl shadow-2xl overflow-hidden"
+      >
       {[
         { label: 'Rename', action: handleRename },
         { label: 'Delete', action: handleDelete, danger: true },
@@ -104,12 +128,13 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
         <button
           key={label}
           onClick={action}
-          className={`w-full text-left px-4 py-2 text-[13px] transition-colors hover:bg-[rgba(237,236,228,0.06)] ${danger ? 'text-[#f87171]' : 'text-[rgba(237,236,236,0.8)]'}`}
+          className={`w-full text-left text-[13px] transition-colors hover:bg-[rgba(237,236,228,0.06)] ${danger ? 'text-[#f87171]' : 'text-[rgba(237,236,236,0.8)]'}`}
+          style={{ padding: '8px 16px' }}
         >
           {label}
         </button>
       ))}
-      <div className="my-1 border-t border-[rgba(237,236,228,0.08)]" />
+      <div className="border-t border-[rgba(237,236,228,0.08)]" style={{ margin: '4px 0' }} />
       {[
         { label: 'Keyboard Shortcuts', action: handleShortcuts },
         { label: 'Markdown Cheatsheet', action: handleCheatsheet },
@@ -117,7 +142,8 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
         <button
           key={label}
           onClick={action}
-          className="w-full text-left px-4 py-2 text-[13px] text-[rgba(237,236,236,0.8)] transition-colors hover:bg-[rgba(237,236,228,0.06)]"
+          className="w-full text-left text-[13px] text-[rgba(237,236,236,0.8)] transition-colors hover:bg-[rgba(237,236,228,0.06)]"
+          style={{ padding: '8px 16px' }}
         >
           {label}
         </button>

@@ -2,11 +2,11 @@
 .imx-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: 16px;
   transition: border-color var(--transition);
 }
 
@@ -79,24 +79,43 @@
   padding: 24px;
 }
 
-/* ===== IMX PROGRESS ===== */
-.imx-progress {
-  margin-top: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: rgba(192, 133, 50, 0.04);
-  border: 1px solid rgba(192, 133, 50, 0.12);
-  border-radius: var(--radius);
-  padding: 16px 20px;
-  animation: progressPulse 2.5s ease-in-out infinite;
-}
 
-.imx-progress-header {
+
+.imx-progress-inline {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  width: 100%;
+  gap: 16px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ===== CANCEL BUTTON ===== */
+.imx-cancel-btn {
+  flex: none !important;
+  padding: 10px 18px !important;
+  background: rgba(248, 113, 113, 0.08) !important;
+  border-color: rgba(248, 113, 113, 0.2) !important;
+  color: #f87171 !important;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.imx-cancel-btn:hover {
+  background: rgba(248, 113, 113, 0.15) !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+}
+
+/* ===== PROGRESS COMPONENTS ===== */
+.imx-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .imx-progress-phase-row {
@@ -106,81 +125,77 @@
 }
 
 .imx-progress-phase {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--accent-2, var(--accent));
-  letter-spacing: 0.3px;
+  color: var(--accent-2);
   white-space: nowrap;
 }
 
 .imx-progress-pct {
   font-family: var(--mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--accent);
-  background: rgba(192, 133, 50, 0.12);
-  border: 1px solid rgba(192, 133, 50, 0.25);
-  padding: 2px 10px;
-  border-radius: var(--radius-pill, 50px);
-  letter-spacing: 0.5px;
-  min-width: 48px;
-  text-align: center;
+  background: rgba(192, 133, 50, 0.15);
+  padding: 3px 10px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 
 .imx-progress-bar-track {
-  width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 2px;
-  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(20, 18, 11, 0.6);
+  z-index: 0;
+  display: block !important;
 }
 
 .imx-progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, rgba(192, 133, 50, 0.7), rgba(212, 163, 80, 1));
-  border-radius: 2px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 8px rgba(192, 133, 50, 0.3);
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(192, 133, 50, 0.1), rgba(212, 160, 74, 0.25));
+  border-right: 1px solid rgba(212, 160, 74, 0.5);
+  box-shadow: 0 0 15px rgba(212, 160, 74, 0.2);
+  z-index: 1;
+  transition: width 0.3s ease-out;
+  display: block !important;
 }
 
 .imx-progress-stats {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .imx-progress-stat {
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 500;
-  padding: 2px 8px;
-  border-radius: var(--radius-pill, 50px);
-  letter-spacing: 0.2px;
+  padding: 3px 8px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 
 .imx-progress-stat.total {
   color: var(--text-2);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .imx-progress-stat.success {
   color: #6ee7b7;
-  background: rgba(110, 231, 183, 0.08);
-  border: 1px solid rgba(110, 231, 183, 0.15);
+  background: rgba(110, 231, 183, 0.1);
 }
 
 .imx-progress-stat.fail {
   color: #f87171;
-  background: rgba(248, 113, 113, 0.08);
-  border: 1px solid rgba(248, 113, 113, 0.15);
+  background: rgba(248, 113, 113, 0.1);
 }
 
 .imx-progress-stat.fail.zero {
-  color: var(--text-3);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: none;
 }

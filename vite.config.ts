@@ -17,6 +17,7 @@ export default defineConfig({
         server.middlewares.use((req, _res, next) => {
           if (req.url === '/markdown' || req.url === '/markdown/') req.url = '/markdown.html';
           if (req.url === '/text' || req.url === '/text/') req.url = '/text.html';
+          if (req.url === '/imx' || req.url === '/imx/') req.url = '/imx.html';
           if (req.url?.startsWith('/plain') && !req.url.startsWith('/plain/api') && !req.url.startsWith('/plain/raw')) req.url = '/plain.html';
           next();
         });
@@ -47,6 +48,7 @@ export default defineConfig({
         markdown: path.resolve(__dirname, 'markdown.html'),
         text: path.resolve(__dirname, 'text.html'),
         plain: path.resolve(__dirname, 'plain.html'),
+        imx: path.resolve(__dirname, 'imx.html'),
       },
       output: {
         manualChunks: (id) => {

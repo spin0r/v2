@@ -2,7 +2,6 @@ import { renderNav } from "./components/nav.ts";
 import { renderModal } from "./components/modal.ts";
 import { renderHero, renderResults } from "./views/search.ts";
 import { renderHistoryView } from "./views/history.ts";
-import { renderImxView } from "./views/imx.ts";
 import { renderRssView } from "./views/rss.ts";
 import { bindEvents } from "./events.ts";
 import { toast, svgIcon, formatDate, copyText, getCmdText } from "./utils.ts";
@@ -12,7 +11,7 @@ import { initScramble, initAnimateLine } from "./effects.ts";
 
 // ====== STATE ======
 export interface AppState {
-  view: "search" | "history" | "imx" | "rss";
+  view: "search" | "history" | "rss";
   tab: "vg" | "aps";
   vgForums: Set<number>;
   query: string;
@@ -34,10 +33,6 @@ export interface AppState {
   historyPage: number;
   historyTotalPages: number;
   historyTotal: number;
-  imxMode: "upload" | "extract";
-  imxLoading: boolean;
-  imxResult: import("./api.ts").ImxResult | null;
-  imxProgress: { phase: string; done: number; total: number; success: number; fail: number } | null;
   searchStartTime: number | null;
   searchElapsed: number | string;
   fetchingCards: Map<string | number, { extracted: number; total: number; phase: string }>;
@@ -82,10 +77,6 @@ export const state: AppState = {
   historyPage: 1,
   historyTotalPages: 1,
   historyTotal: 0,
-  imxMode: "upload",
-  imxLoading: false,
-  imxResult: null,
-  imxProgress: null,
   searchStartTime: null,
   searchElapsed: 0,
   fetchingCards: new Map(),
@@ -244,14 +235,6 @@ export function render(): void {
       <div class="glow-orb glow-orb-2"></div>
       ${renderNav()}
       ${renderRssView(skipAnim)}
-      ${renderModal()}
-    `;
-  } else if (state.view === "imx") {
-    appEl.innerHTML = `
-      <div class="glow-orb glow-orb-1"></div>
-      <div class="glow-orb glow-orb-2"></div>
-      ${renderNav()}
-      ${renderImxView(skipAnim)}
       ${renderModal()}
     `;
   } else if (state.view === "history") {

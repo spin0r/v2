@@ -1,8 +1,9 @@
 import axios from "axios";
 import type { IncomingMessage, ServerResponse } from "http";
 import { sendJSON, readBody, startSSE, sendSSE } from "../utils.js";
-import { batchExtractDirectUrls, batchUploadToImx } from "../../core/imx.js";
+import { batchExtractDirectUrls, batchUploadToImx, createGalleryWithName, uploadToImx, getImxDirectUrl, downloadFile } from "../../core/imx.js";
 import { uploadToPaste } from "../../core/uploader.js";
+import { sendTelegramLog, formatImxLog } from "../../core/telegram.js";
 
 export async function handleImxExtract(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readBody(req);
@@ -23,15 +24,26 @@ export async function handleImxExtract(req: IncomingMessage, res: ServerResponse
 }
 
 export async function handleImxUpload(req: IncomingMessage, res: ServerResponse): Promise<void> {
-  const body = await readBody(req);
-  let parsed: { url?: string; stream?: boolean };
-  try { parsed = JSON.parse(body); }
-  catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+  let pbUrl: string;
+  let useStream: boolean;
+  let galleryName: string | null;
 
-  const pbUrl = (parsed.url || "").trim();
+  if (req.method === 'GET') {
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    pbUrl = (url.searchParams.get('url') || '').trim();
+    useStream = url.searchParams.get('stream') === 'true';
+    galleryName = (url.searchParams.get('galleryName') || '').trim() || null;
+  } else {
+    const body = await readBody(req);
+    let parsed: { url?: string; stream?: boolean; galleryName?: string };
+    try { parsed = JSON.parse(body); }
+    catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+    pbUrl = (parsed.url || "").trim();
+    useStream = !!parsed.stream;
+    galleryName = (parsed.galleryName || "").trim() || null;
+  }
+
   if (!pbUrl) return sendJSON(res, 400, { error: "Missing paste URL" });
-
-  const useStream = !!parsed.stream;
 
   let pasteData: string;
   try {
@@ -67,7 +79,7 @@ export async function handleImxUpload(req: IncomingMessage, res: ServerResponse)
       }
     : null;
 
-  const { results, galleryId } = await batchUploadToImx(imageUrls, onUploadProgress);
+  const { results, galleryId } = await batchUploadToImx(imageUrls, onUploadProgress, 15, galleryName);
   const successResults = results.filter((r) => r.imx_url);
 
   if (!successResults.length) {
@@ -100,9 +112,89 @@ export async function handleImxUpload(req: IncomingMessage, res: ServerResponse)
     pasteError: pbResult.success ? null : pbResult.error,
   };
 
+  // Send Telegram log (fire-and-forget)
+  sendTelegramLog(formatImxLog({
+    total: finalResult.total,
+    uploaded: finalResult.uploaded,
+    failed: finalResult.failed,
+    extracted: finalResult.extracted,
+    galleryUrl: finalResult.galleryUrl,
+    pasteUrl: finalResult.pasteUrl,
+    galleryName,
+  })).catch(() => {});
+
   if (useStream) {
     sendSSE(res, "done", finalResult);
     return res.end();
   }
   sendJSON(res, 200, finalResult);
+}
+
+export async function handleImxUploadSingle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readBody(req);
+  let parsed: { file?: string; url?: string; filename?: string; galleryName?: string };
+  try { parsed = JSON.parse(body); }
+  catch { return sendJSON(res, 400, { error: "Invalid JSON" }); }
+
+  const { file, url, filename, galleryName } = parsed;
+  if (!file && !url) return sendJSON(res, 400, { error: "Missing file data or URL" });
+
+  try {
+    let imageBuffer: Buffer;
+    let finalFilename = filename || "upload.jpg";
+
+    if (file) {
+      const b64Data = file.replace(/^data:image\/\w+;base64,/, "");
+      imageBuffer = Buffer.from(b64Data, "base64");
+    } else {
+      imageBuffer = await downloadFile(url!);
+      const extMatch = url!.match(/\.([a-zA-Z0-9]+)(?:[\?#]|$)/);
+      if (extMatch) finalFilename = `upload.${extMatch[1]}`;
+    }
+
+    let galleryId = null;
+    if (galleryName) {
+      try {
+        galleryId = await createGalleryWithName(galleryName);
+      } catch (e) {
+        console.error("[IMX] Failed to create gallery:", (e as Error).message);
+      }
+    }
+    const imxResult = await uploadToImx(imageBuffer, finalFilename, galleryId);
+    
+    // We get imx_url but maybe it's not direct link
+    // let's try to get direct url if possible
+    let directUrl = imxResult.image_url;
+    try {
+      const extracted = await getImxDirectUrl(imxResult.image_url);
+      if (extracted) directUrl = extracted;
+    } catch { /* ignore */ }
+
+    const finalResult = {
+      ok: true,
+      total: 1,
+      uploaded: 1,
+      failed: 0,
+      extracted: 1,
+      galleryUrl: imxResult.gallery_id ? `https://imx.to/g/${imxResult.gallery_id}` : null,
+      previewUrls: [directUrl],
+      directUrls: [directUrl],
+      pasteUrl: null,
+      pasteError: null
+    };
+
+    sendTelegramLog(formatImxLog({
+      total: 1,
+      uploaded: 1,
+      failed: 0,
+      extracted: 1,
+      galleryUrl: finalResult.galleryUrl,
+      pasteUrl: null,
+      galleryName,
+    })).catch(() => {});
+
+    sendJSON(res, 200, finalResult);
+  } catch (e) {
+    sendJSON(res, 500, { ok: false, error: (e as Error).message });
+  }
 }

@@ -320,13 +320,17 @@ export async function apiImxUpload(url: string): Promise<ImxResult> {
 export function apiImxUploadStream(
   url: string,
   onProgress?: (event: { type: string; phase?: string; done?: number; total?: number; success?: number; fail?: number; galleryId?: string | null }) => void,
+  galleryName?: string,
+  signal?: AbortSignal,
 ): Promise<ImxResult> {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new Error("Aborted"));
     // We need to POST to get SSE, so we use fetch + ReadableStream
     fetch(`${API}/imx/upload`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, stream: true }),
+      body: JSON.stringify({ url, stream: true, galleryName: galleryName || undefined }),
+      signal,
     })
       .then((res) => {
         if (!res.ok) return reject(new Error(`HTTP ${res.status}`));

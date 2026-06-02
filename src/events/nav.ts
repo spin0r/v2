@@ -34,18 +34,7 @@ export function bindNavEvents(appEl: HTMLElement): void {
       }
     });
 
-  // IMX nav
-  const navImx = appEl.querySelector("#nav-imx");
-  if (navImx)
-    navImx.addEventListener("click", () => {
-      if (state.view !== "imx") {
-        state.view = "imx";
-        state.imxResult = null;
-        render();
-      }
-    });
-
-  // Tab switch (search tabs only, not IMX sub-tabs)
+  // Tab switch (search tabs only)
   appEl.querySelectorAll<HTMLElement>(".tab-btn[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.tab = (btn.dataset.tab as "vg" | "aps") || "vg";

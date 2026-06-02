@@ -90,6 +90,8 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
     ["/plain/", fs.existsSync(path.join(rootDir, "dist", "plain.html")) ? path.join(rootDir, "dist", "plain.html") : path.join(rootDir, "plain", "index.html")],
     ["/docs", path.join(rootDir, "docs", "home", "index.html")],
     ["/docs/", path.join(rootDir, "docs", "home", "index.html")],
+    ["/imx", fs.existsSync(path.join(rootDir, "dist", "imx.html")) ? path.join(rootDir, "dist", "imx.html") : path.join(rootDir, "imx.html")],
+    ["/imx/", fs.existsSync(path.join(rootDir, "dist", "imx.html")) ? path.join(rootDir, "dist", "imx.html") : path.join(rootDir, "imx.html")],
     ["/markdown", fs.existsSync(path.join(rootDir, "dist", "markdown.html")) ? path.join(rootDir, "dist", "markdown.html") : path.join(rootDir, "markdown.html")],
     ["/markdown/", fs.existsSync(path.join(rootDir, "dist", "markdown.html")) ? path.join(rootDir, "dist", "markdown.html") : path.join(rootDir, "markdown.html")],
     ["/text", fs.existsSync(path.join(rootDir, "dist", "text.html")) ? path.join(rootDir, "dist", "text.html") : path.join(rootDir, "text.html")],

@@ -59,12 +59,17 @@ export default function Editor() {
   const showPreview = view === 'split' || view === 'preview';
 
   /* ── Sync scroll between textarea and backdrop ── */
-  const syncScroll = useCallback(() => {
+  const syncScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
     const ta = textareaRef.current;
     const bd = backdropRef.current;
-    if (ta && bd) {
+    if (!ta || !bd) return;
+    
+    if (e.target === ta) {
       bd.scrollTop = ta.scrollTop;
       bd.scrollLeft = ta.scrollLeft;
+    } else if (e.target === bd) {
+      ta.scrollTop = bd.scrollTop;
+      ta.scrollLeft = bd.scrollLeft;
     }
   }, []);
 
@@ -84,6 +89,7 @@ export default function Editor() {
             ref={backdropRef}
             className="editor-backdrop"
             aria-hidden="true"
+            onScroll={syncScroll}
             dangerouslySetInnerHTML={{ __html: highlighted }}
           />
           {/* Real textarea — fully transparent text, captures all input */}

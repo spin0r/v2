@@ -2605,6 +2605,8 @@ main {
   overflow-y: scroll;
   border: none;
   -webkit-text-fill-color: transparent;  /* Safari */
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 .editor-textarea::placeholder {
   color: rgba(237, 236, 236, 0.2);

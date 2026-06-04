@@ -104,13 +104,19 @@ export interface ResultWithCommands {
   ok?: boolean;
   sendCommand?: string;
   dlCommand?: string;
+  sourceUrl?: string;
 }
 
 export function getCmdText(result: ResultWithCommands | undefined | null): string {
   if (!result || !result.ok) return "";
-  return (
-    [result.sendCommand, result.dlCommand].filter(Boolean).join("\n") + "\n"
-  );
+  const parts: string[] = [];
+  if (result.sendCommand) {
+    let cmd = result.sendCommand;
+    if (result.sourceUrl) cmd += `\n\n<a href="${result.sourceUrl}">Source</a>`;
+    parts.push(cmd);
+  }
+  if (result.dlCommand) parts.push(result.dlCommand);
+  return parts.join("\n") + "\n";
 }
 
 // ====== CELEBRATION ======

@@ -21,9 +21,10 @@ export function bindModalEvents(appEl: HTMLElement): void {
 
   const cmdBlock = appEl.querySelector<HTMLElement>(".cmd-block");
   if (cmdBlock)
-    cmdBlock.addEventListener("click", () =>
-      copyText((cmdBlock.dataset.copyCmd || "").replace(/\\n/g, "\n") + "\n"),
-    );
+    cmdBlock.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".cmd-source-link")) return;
+      copyText((cmdBlock.dataset.copyCmd || "").replace(/\\n/g, "\n") + "\n");
+    });
 
   const dfCopyPaste = appEl.querySelector("#df-copy-paste");
   if (dfCopyPaste && state.directFetchResult?.pasteUrl) {
@@ -34,9 +35,12 @@ export function bindModalEvents(appEl: HTMLElement): void {
 
   const dfCopySend = appEl.querySelector("#df-copy-send");
   if (dfCopySend && state.directFetchResult?.sendCommand) {
-    dfCopySend.addEventListener("click", () =>
-      copyText(state.directFetchResult!.sendCommand!),
-    );
+    dfCopySend.addEventListener("click", () => {
+      const d = state.directFetchResult!;
+      let cmd = d.sendCommand!;
+      if (d.sourceUrl) cmd += `\n\n<a href="${d.sourceUrl}">Source</a>`;
+      copyText(cmd + "\n");
+    });
   }
 
   // Thread view pagination
@@ -144,9 +148,13 @@ export function bindModalEvents(appEl: HTMLElement): void {
 
   const modalCopySend = appEl.querySelector("#modal-copy-send");
   if (modalCopySend)
-    modalCopySend.addEventListener("click", () =>
-      copyText(state.modalData?.sendCommand || ""),
-    );
+    modalCopySend.addEventListener("click", () => {
+      const d = state.modalData;
+      if (!d?.sendCommand) return;
+      let cmd = d.sendCommand;
+      if (d.sourceUrl) cmd += `\n\n<a href="${d.sourceUrl}">Source</a>`;
+      copyText(cmd + "\n");
+    });
 
   const modalOpen = appEl.querySelector<HTMLElement>("#modal-open");
   if (modalOpen)
@@ -246,8 +254,9 @@ export function bindModalEvents(appEl: HTMLElement): void {
   appEl.querySelectorAll<HTMLElement>("[data-copy-cmd]").forEach((el) => {
     el.style.cursor = "pointer";
     el.title = "Click to copy";
-    el.addEventListener("click", () =>
-      copyText((el.dataset.copyCmd || "").replace(/\\n/g, "\n") + "\n"),
-    );
+    el.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".cmd-source-link")) return;
+      copyText((el.dataset.copyCmd || "").replace(/\\n/g, "\n") + "\n");
+    });
   });
 }

@@ -318,7 +318,7 @@ export async function extractAndUpload(
     pasteUrl: result.success ? result.url : null,
     pasteError: result.success ? null : result.error,
     hashtag,
-    sendCommand: title ? `/send ${hashtag}${title}` : null,
-    dlCommand: result.success ? `/dl ${result.url}` : null,
+    sendCommand: title ? `/s ${hashtag}${title}` : null,
+    dlCommand: result.success ? `/d ${result.url}` : null,
   };
 }

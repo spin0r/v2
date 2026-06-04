@@ -1406,6 +1406,23 @@ main {
   color: var(--text);
 }
 
+.cmd-source-line {
+  margin-top: 4px;
+}
+.cmd-source-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  opacity: 0.8;
+  transition: opacity var(--transition), color var(--transition);
+}
+.cmd-source-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+  color: var(--accent-2);
+}
+
 /* Copy command button on cards */
 .copy-cmd-btn {
   display: flex;

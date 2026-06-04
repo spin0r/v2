@@ -255,8 +255,8 @@ export async function handleReExtract(req: IncomingMessage, res: ServerResponse)
     indexedUrls: Object.keys(urlMap).length > 0 ? urlMap : undefined,
     newlyRecovered, services, directUrls: allUrls, previewUrls: allUrls.slice(0, 5),
     pasteUrl: result.success ? result.url : null, pasteError: result.success ? null : result.error,
-    hashtag, sendCommand: title ? `/send ${hashtag}${title}` : null,
-    dlCommand: result.success ? `/dl ${result.url}` : null,
+    hashtag, sendCommand: title ? `/s ${hashtag}${title}` : null,
+    dlCommand: result.success ? `/d ${result.url}` : null,
   };
   if (finalResult.ok) addToHistory(finalResult);
   sendJSON(res, 200, finalResult);

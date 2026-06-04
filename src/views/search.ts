@@ -246,21 +246,30 @@ function renderResults(): string {
             <div class="info-row"><span class="info-key">Source</span><span class="info-val url-val" title="${d.sourceUrl}">${d.sourceUrl}</span></div>
             ${d.pasteUrl ? `<div class="info-row"><span class="info-key">Link</span><span class="info-val"><a class="paste-link" href="${d.pasteUrl}" target="_blank" rel="noopener">${d.pasteUrl}</a></span></div>` : ""}
           </div>
-          ${
-            d.sendCommand || d.dlCommand
-              ? `<div class="cmd-block" data-copy-cmd="${[d.sendCommand, d.dlCommand].filter(Boolean).join("\\n")}">${[
-                  d.sendCommand,
-                  d.dlCommand,
-                ]
-                  .filter(Boolean)
-                  .map((c) => `<div class="cmd-line">${c}</div>`)
-                  .join("")}</div>`
-              : ""
-          }
+          ${(() => {
+              const cmdParts: string[] = [];
+              const cmdCopyParts: string[] = [];
+              if (d.sendCommand) {
+                cmdParts.push(`<div class="cmd-line">${d.sendCommand}</div>`);
+                let copyCmd = d.sendCommand;
+                if (d.sourceUrl) {
+                  cmdParts.push(`<div class="cmd-line cmd-source-line"><a href="${d.sourceUrl}" target="_blank" rel="noopener" class="cmd-source-link">Source</a></div>`);
+                  copyCmd += `\\n\\n<a href="${d.sourceUrl}">Source</a>`;
+                }
+                cmdCopyParts.push(copyCmd);
+              }
+              if (d.dlCommand) {
+                cmdParts.push(`<div class="cmd-line">${d.dlCommand}</div>`);
+                cmdCopyParts.push(d.dlCommand);
+              }
+              return cmdParts.length > 0
+                ? `<div class="cmd-block" data-copy-cmd="${cmdCopyParts.join("\\n").replace(/"/g, "&quot;")}">${cmdParts.join("")}</div>`
+                : "";
+            })()}
           ${previewHtml ? `<div class="preview-block" style="margin-top:16px">${previewHtml}</div>` : ""}
           <div class="modal-actions" style="margin-top:16px">
             ${d.pasteUrl ? `<button class="action-btn" id="df-copy-paste">${svgIcon("copy")} Copy Link</button>` : ""}
-            ${d.sendCommand ? `<button class="action-btn" id="df-copy-send">${svgIcon("copy")} Copy /send</button>` : ""}
+            ${d.sendCommand ? `<button class="action-btn" id="df-copy-send">${svgIcon("copy")} Copy /s</button>` : ""}
             <button class="action-btn primary" id="df-open" data-url="${d.sourceUrl}">${svgIcon("external")} Open Thread</button>
           </div>
         </div>`;

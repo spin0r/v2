@@ -59,6 +59,7 @@ interface Store {
   updateContent: (content: string) => void;
   renameFile: (id: string, name: string) => void;
   deleteFile: (id: string) => void;
+  reorderFiles: (fromIndex: number, toIndex: number) => void;
   setSidebar: (open: boolean) => void;
   setView: (v: Store['view']) => void;
 }
@@ -98,6 +99,14 @@ export const useStore = create<Store>()(
           }
           const activeId = s.activeId === id ? files[files.length - 1].id : s.activeId;
           return { files, activeId };
+        }),
+
+      reorderFiles: (fromIndex, toIndex) =>
+        set(s => {
+          const files = [...s.files];
+          const [removed] = files.splice(fromIndex, 1);
+          files.splice(toIndex, 0, removed);
+          return { files };
         }),
 
       setSidebar: (open) => set({ sidebarOpen: open }),

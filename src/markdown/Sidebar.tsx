@@ -9,9 +9,11 @@ export default function Sidebar() {
   const setActive = useStore(s => s.setActive);
   const renameFile = useStore(s => s.renameFile);
   const deleteFile = useStore(s => s.deleteFile);
+  const reorderFiles = useStore(s => s.reorderFiles);
 
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   const startRename = (id: string, name: string) => {
     setRenamingId(id);
@@ -23,6 +25,21 @@ export default function Sidebar() {
       renameFile(renamingId, renameVal.trim().endsWith('.md') ? renameVal.trim() : renameVal.trim() + '.md');
     }
     setRenamingId(null);
+  };
+
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    reorderFiles(draggedIndex, index);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
   };
 
   return (
@@ -38,8 +55,15 @@ export default function Sidebar() {
         </button>
       </div>
       <ul className="md-sidebar-list">
-        {files.map(f => (
-          <li key={f.id}>
+        {files.map((f, index) => (
+          <li
+            key={f.id}
+            draggable={renamingId !== f.id}
+            onDragStart={() => handleDragStart(index)}
+            onDragOver={(e) => handleDragOver(e, index)}
+            onDragEnd={handleDragEnd}
+            style={{ opacity: draggedIndex === index ? 0.5 : 1 }}
+          >
             {renamingId === f.id ? (
               <input
                 autoFocus

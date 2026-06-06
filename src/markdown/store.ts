@@ -60,6 +60,7 @@ interface Store {
   renameFile: (id: string, name: string) => void;
   deleteFile: (id: string) => void;
   reorderFiles: (fromIndex: number, toIndex: number) => void;
+  importFile: (file: MdFile) => void;
   setSidebar: (open: boolean) => void;
   setView: (v: Store['view']) => void;
 }
@@ -108,6 +109,9 @@ export const useStore = create<Store>()(
           files.splice(toIndex, 0, removed);
           return { files };
         }),
+
+      importFile: (file) =>
+        set(s => ({ files: [...s.files, file], activeId: file.id })),
 
       setSidebar: (open) => set({ sidebarOpen: open }),
       setView: (view) => set({ view }),

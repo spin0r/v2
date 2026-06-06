@@ -17,7 +17,8 @@ export default function Sidebar() {
 
   const startRename = (id: string, name: string) => {
     setRenamingId(id);
-    setRenameVal(name);
+    // Strip .md extension when editing, will be added back on commit
+    setRenameVal(name.endsWith('.md') ? name.slice(0, -3) : name);
   };
 
   const commitRename = () => {

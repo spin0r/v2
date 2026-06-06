@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useStore, activeFile } from './store';
+import { useStore, activeFile, MdFile } from './store';
+import { nanoid } from 'nanoid';
 
 const SHORTCUTS = [
   ['Ctrl+S', 'Save file'],
@@ -42,8 +43,10 @@ interface Props {
 
 export default function Menu({ anchor, onClose, onShowModal }: Props) {
   const file = useStore(activeFile);
+  const files = useStore(s => s.files);
   const renameFile = useStore(s => s.renameFile);
   const deleteFile = useStore(s => s.deleteFile);
+  const importFile = useStore(s => s.importFile);
   const ref = useRef<HTMLDivElement>(null);
 
   // position below anchor
@@ -61,13 +64,87 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
 
   const handleRename = () => {
     onClose();
-    const name = prompt('Rename file:', file?.name);
+    const currentName = file?.name.endsWith('.md') ? file.name.slice(0, -3) : file?.name;
+    const name = prompt('Rename file:', currentName);
     if (name?.trim()) renameFile(file!.id, name.trim().endsWith('.md') ? name.trim() : name.trim() + '.md');
   };
 
   const handleDelete = () => {
     onClose();
     if (confirm(`Delete "${file?.name}"?`)) deleteFile(file!.id);
+  };
+
+  const handleExport = () => {
+    onClose();
+    if (!file) return;
+    
+    const blob = new Blob([file.content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = () => {
+    onClose();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.md,text/markdown';
+    input.multiple = true;
+    input.onchange = async (e) => {
+      const fileList = (e.target as HTMLInputElement).files;
+      if (!fileList) return;
+      
+      for (let i = 0; i < fileList.length; i++) {
+        const uploadedFile = fileList[i];
+        const content = await uploadedFile.text();
+        const fileName = uploadedFile.name;
+        
+        // Check if file with same name exists, auto-rename if needed
+        let finalName = fileName.endsWith('.md') ? fileName : fileName + '.md';
+        let counter = 1;
+        while (files.some(f => f.name === finalName)) {
+          const baseName = fileName.endsWith('.md') ? fileName.slice(0, -3) : fileName;
+          finalName = `${baseName} (${counter}).md`;
+          counter++;
+        }
+        
+        const newFile: MdFile = { 
+          id: nanoid(8), 
+          name: finalName, 
+          content, 
+          updatedAt: Date.now() 
+        };
+        
+        importFile(newFile);
+      }
+    };
+    input.click();
+  };
+
+  const handleExportAll = async () => {
+    onClose();
+    if (files.length === 0) return;
+
+    // Dynamic import for JSZip
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    
+    // Add all files to zip
+    files.forEach(f => {
+      zip.file(f.name, f.content);
+    });
+    
+    // Generate zip and download
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'markdown-files.zip';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleShortcuts = () => {
@@ -140,6 +217,21 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
           key={label}
           onClick={action}
           className={`w-full text-left text-[13px] transition-colors hover:bg-[rgba(237,236,228,0.06)] ${danger ? 'text-[#f87171]' : 'text-[rgba(237,236,236,0.8)]'}`}
+          style={{ padding: '8px 16px' }}
+        >
+          {label}
+        </button>
+      ))}
+      <div className="border-t border-[rgba(237,236,228,0.08)]" style={{ margin: '4px 0' }} />
+      {[
+        { label: 'Export', action: handleExport },
+        { label: 'Import', action: handleImport },
+        { label: 'Export All', action: handleExportAll },
+      ].map(({ label, action }) => (
+        <button
+          key={label}
+          onClick={action}
+          className="w-full text-left text-[13px] text-[rgba(237,236,236,0.8)] transition-colors hover:bg-[rgba(237,236,228,0.06)]"
           style={{ padding: '8px 16px' }}
         >
           {label}

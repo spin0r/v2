@@ -114,10 +114,8 @@ export class ViperGirlsDownloader {
           boldText = textBeforeBr.trim();
         }
 
-        // Look for pattern: "Name - Title! MM/DD/YY - size info"
-        if (
-          /^.+?\s*-\s*.+?\s+\d{2}\/\d{2}\/\d{2,4}\s*-\s*.+$/i.test(boldText)
-        ) {
+        // Look for pattern: "Title MM/DD/YY - size info" (dash before date is optional)
+        if (/^.+?\s+\d{2}\/\d{2}\/\d{2,4}\s*-\s*.+$/i.test(boldText)) {
           bodyTitle = boldText;
           break;
         }

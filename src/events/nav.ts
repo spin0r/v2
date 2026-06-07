@@ -72,6 +72,25 @@ export function bindNavEvents(appEl: HTMLElement): void {
     });
   });
 
+  // Post-search result filter toggles
+  appEl.querySelectorAll<HTMLElement>(".filter-toggle[data-filter-forum]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const fid = parseInt(btn.dataset.filterForum || "0");
+      if (!fid) return;
+      if (state.visibleCategories.has(fid)) {
+        // Don't allow hiding all forums
+        if (state.visibleCategories.size <= 1) {
+          toast("At least one forum must be visible", "error");
+          return;
+        }
+        state.visibleCategories.delete(fid);
+      } else {
+        state.visibleCategories.add(fid);
+      }
+      doSearch(state.query, 1, false);
+    });
+  });
+
   // Search
   const input = appEl.querySelector<HTMLInputElement>("#search-input");
   const searchBtn = appEl.querySelector("#search-btn");
@@ -100,12 +119,28 @@ export function bindNavEvents(appEl: HTMLElement): void {
   });
 
   // Pagination
+  const first = appEl.querySelector("#first-page");
   const prev = appEl.querySelector("#prev-page");
   const next = appEl.querySelector("#next-page");
-  if (prev)
-    prev.addEventListener("click", () => doSearch(state.query, state.page - 1));
-  if (next)
-    next.addEventListener("click", () => doSearch(state.query, state.page + 1));
+  const last = appEl.querySelector("#last-page");
+  const pageInput = appEl.querySelector<HTMLInputElement>("#page-input");
+
+  if (first) first.addEventListener("click", () => doSearch(state.query, 1, false));
+  if (prev) prev.addEventListener("click", () => doSearch(state.query, state.page - 1, false));
+  if (next) next.addEventListener("click", () => doSearch(state.query, state.page + 1, false));
+  if (last) last.addEventListener("click", () => doSearch(state.query, state.totalPages, false));
+  
+  if (pageInput) {
+    pageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        let p = parseInt(pageInput.value) || 1;
+        p = Math.max(1, Math.min(p, state.totalPages));
+        doSearch(state.query, p, false);
+      }
+    });
+    // Prevent focus from being lost if they click it
+    pageInput.addEventListener("click", (e) => e.stopPropagation());
+  }
 
   // Export button
   const exportBtn = appEl.querySelector("#export-btn");

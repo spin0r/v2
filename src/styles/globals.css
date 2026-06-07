@@ -526,15 +526,17 @@ nav {
   font-size: 13px;
   font-weight: 600;
   border: none;
-  padding: 12px 24px;
+  padding: 12px 0;
   border-radius: 10px;
   cursor: pointer;
   transition: all var(--transition);
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   white-space: nowrap;
   flex-shrink: 0;
+  width: 165px;
 }
 
 .search-btn span {
@@ -687,11 +689,43 @@ main {
   gap: 6px;
 }
 
-.page-info {
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.page-input {
+  width: 44px;
+  height: 28px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  transition: all var(--transition);
+}
+
+.page-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* Hide number input spinners */
+.page-input::-webkit-inner-spin-button, 
+.page-input::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+
+.page-total {
   font-size: 12px;
   font-family: var(--mono);
   color: var(--text-2);
-  padding: 0 10px;
 }
 
 .icon-btn {
@@ -716,6 +750,155 @@ main {
 .icon-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
+}
+
+/* ===== POST-SEARCH FILTER TOGGLES ===== */
+.post-search-filters {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.post-search-filters .filter-label {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.post-search-filters .filter-label svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.6;
+  stroke: currentColor;
+  fill: none;
+}
+
+.filter-toggle-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-toggle {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--text-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+
+.filter-toggle-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+  opacity: 0.3;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.filter-toggle-count {
+  font-size: 10px;
+  color: var(--text-3);
+  opacity: 0.6;
+  margin-left: 2px;
+  transition: all var(--transition);
+}
+
+.filter-toggle:hover {
+  color: var(--text-2);
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+}
+
+.filter-toggle:hover .filter-toggle-dot {
+  opacity: 0.6;
+}
+
+.filter-toggle.active {
+  color: var(--accent);
+  border-color: rgba(192, 133, 50, 0.35);
+  background: rgba(192, 133, 50, 0.08);
+  box-shadow: 0 0 12px rgba(192, 133, 50, 0.06);
+}
+
+.filter-toggle.active .filter-toggle-dot {
+  background: var(--accent);
+  opacity: 1;
+  box-shadow: 0 0 6px var(--accent-glow);
+}
+
+.filter-toggle.active .filter-toggle-count {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.filter-toggle:not(.active) {
+  opacity: 0.55;
+}
+
+.filter-toggle:not(.active):hover {
+  opacity: 0.85;
+}
+
+/* ===== FORUM GROUP SECTIONS ===== */
+.forum-group {
+  margin-bottom: 20px;
+}
+
+.forum-group:last-child {
+  margin-bottom: 0;
+}
+
+.forum-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, rgba(192, 133, 50, 0.06) 0%, transparent 100%);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.forum-group-title {
+  font-size: 12px;
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.forum-group-count {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text-3);
+  opacity: 0.7;
 }
 
 /* ===== RESULTS LIST (components.css) ===== */
@@ -826,6 +1009,19 @@ main {
   border: 1px solid var(--border);
   padding: 2px 7px;
   border-radius: 4px;
+}
+
+.result-forum-badge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--accent);
+  background: rgba(192, 133, 50, 0.08);
+  border: 1px solid rgba(192, 133, 50, 0.2);
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 .result-actions {

@@ -10,11 +10,14 @@ export interface SearchResult {
   category?: string;
   timestamp?: number;
   dateText?: string;
+  forumId?: number;
 }
 
 export interface SearchResponse {
   results: SearchResult[];
   total: number;
+  totalUnfiltered?: number;
+  forumCounts?: Record<number, number>;
   totalPages?: number;
   page?: number;
 }
@@ -131,10 +134,12 @@ export async function apiSearch(
   query: string,
   page = 1,
   forums?: number[],
+  filterForums?: number[],
 ): Promise<SearchResponse> {
   const endpoint = tab === "vg" ? "/search/vg" : "/search/aps";
   let url = `${API}${endpoint}?q=${encodeURIComponent(query)}&page=${page}`;
   if (forums && forums.length) url += `&forums=${forums.join(",")}`;
+  if (filterForums && filterForums.length) url += `&filterForums=${filterForums.join(",")}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();

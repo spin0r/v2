@@ -16,6 +16,7 @@ export interface AppState {
   vgForums: Set<number>;
   query: string;
   loading: boolean;
+  isNewSearchLoading: boolean;
   results: SearchResult[];
   page: number;
   totalPages: number;
@@ -45,6 +46,9 @@ export interface AppState {
   rssFeedTitle: string;
   rssFeedUpdated: string;
   rssError: string | null;
+  visibleCategories: Set<number>;
+  totalUnfiltered: number;
+  forumCounts: Record<number, number>;
 }
 
 export const state: AppState = {
@@ -57,10 +61,11 @@ export const state: AppState = {
     } catch {
       /* ignore */
     }
-    return new Set([302, 303, 304]);
+    return new Set([268, 302, 303, 304]);
   })(),
   query: "",
   loading: false,
+  isNewSearchLoading: false,
   results: [],
   page: 1,
   totalPages: 1,
@@ -89,6 +94,9 @@ export const state: AppState = {
   rssFeedTitle: "",
   rssFeedUpdated: "",
   rssError: null,
+  visibleCategories: new Set(),
+  totalUnfiltered: 0,
+  forumCounts: {},
 };
 
 let appEl: HTMLElement | null = null;
@@ -251,7 +259,7 @@ export function render(): void {
       <div class="glow-orb glow-orb-2"></div>
       ${renderNav()}
       ${renderHero(skipAnim)}
-      <main>${renderResults()}</main>
+      <main>${renderResults(skipAnim)}</main>
       ${renderModal()}
     `;
   }

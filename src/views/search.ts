@@ -11,6 +11,14 @@ import { apiSearch, apiDirectFetch } from "../api.ts";
 import type { SearchResult, FetchResult } from "../api.ts";
 import { renderThreadView } from "./thread.ts";
 
+// Forum ID → display name map
+const FORUM_NAMES: Record<number, string> = {
+  268: "Scene Photos",
+  302: "Softcore Photo Sets",
+  303: "Artistic Photo Sets",
+  304: "Hardcore Photo Sets",
+};
+
 // ====== HERO ======
 function renderHero(skipAnim: boolean): string {
   return `
@@ -30,6 +38,7 @@ function renderHero(skipAnim: boolean): string {
     <div class="forum-toggles">
       <span class="forum-toggles-label">Forums:</span>
       ${[
+        { id: 268, name: "268-Scene-Photos" },
         { id: 302, name: "302-Softcore-Photo-Sets" },
         { id: 303, name: "303-Artistic-Photo-Sets" },
         { id: 304, name: "304-Hardcore-Photo-Sets" },
@@ -57,9 +66,9 @@ function renderHero(skipAnim: boolean): string {
           autocomplete="off"
           spellcheck="false"
         />
-        <button class="search-btn" id="search-btn" ${state.loading ? "disabled" : ""}>
+        <button class="search-btn" id="search-btn" ${state.isNewSearchLoading ? "disabled" : ""}>
           ${
-            state.loading
+            state.isNewSearchLoading
               ? `<div class="spinner"></div> Searching… <span id="search-timer" class="timer-badge">${state.searchElapsed || "0.0"}s</span>`
               : `${svgIcon("arrow_right")} Search`
           }
@@ -98,6 +107,7 @@ function renderCard(r: SearchResult, idx: number): string {
   const dateStr = r.timestamp ? formatDate(r.timestamp) : r.dateText || "";
   const idLabel = r.sgenId ? `/sgen${r.sgenId}` : r.apsId ? `/aps${r.apsId}` : "";
   const prefixHtml = r.prefix ? `<span class="result-prefix">${r.prefix}</span>` : "";
+  const forumNameHtml = r.forumId && FORUM_NAMES[r.forumId] ? `<span class="result-forum-badge">${r.forumId} - ${FORUM_NAMES[r.forumId]}</span>` : "";
   const delay = Math.min(idx * 40, 400);
   const isFetching = state.fetchingCards.has(idx);
   const fetchInfo = isFetching ? state.fetchingCards.get(idx) : null;
@@ -173,6 +183,7 @@ function renderCard(r: SearchResult, idx: number): string {
       <div class="result-body">
         <div class="result-title" title="${r.title}">${r.title}</div>
         <div class="result-meta">
+          ${forumNameHtml}
           ${prefixHtml}
           ${idLabel ? `<span class="result-id glitch" title="Click to copy" data-id="${idLabel}" style="cursor:pointer">${idLabel}</span>` : ""}
           ${dateStr ? `<span class="result-date">${dateStr}</span>` : ""}
@@ -201,6 +212,7 @@ function renderCard(r: SearchResult, idx: number): string {
     <div class="result-body">
       <div class="result-title" title="${r.title}">${r.title}</div>
       <div class="result-meta">
+        ${forumNameHtml}
         ${prefixHtml}
         ${idLabel ? `<span class="result-id glitch" title="Click to copy" data-id="${idLabel}" style="cursor:pointer">${idLabel}</span>` : ""}
         ${dateStr ? `<span class="result-date">${dateStr}</span>` : ""}
@@ -212,7 +224,7 @@ function renderCard(r: SearchResult, idx: number): string {
 }
 
 // ====== RESULTS SECTION ======
-function renderResults(): string {
+function renderResults(skipAnim = false): string {
   if (state.threadData) {
     return renderThreadView();
   }
@@ -281,31 +293,58 @@ function renderResults(): string {
     }
   }
 
-  if (state.loading) {
-    return `<div class="results-list">${renderSkeleton()}</div>`;
-  }
+  const hasCompletedCmds =
+    [...state.completedCards.values()].some((c) => c.ok && (c.sendCommand || c.dlCommand)) ||
+    [...state.completedThreadPosts.values()].some((c) => c.ok && (c.sendCommand || c.dlCommand));
 
-  if (!state.results.length && state.query) {
-    return `
+  // Determine if we're in VG mode with multiple forums to show toggles
+  const isVg = state.tab === "vg";
+  const searchedForums = isVg ? [...state.vgForums] : [];
+  const showForumToggles = isVg && searchedForums.length > 1;
+
+  // Forum filter toggles
+  const filterTogglesHtml = showForumToggles && state.query
+    ? `<div class="post-search-filters ${skipAnim ? "" : "fade-in"}">
+        <span class="filter-label">${svgIcon("filter")} Forums:</span>
+        <div class="filter-toggle-group">
+          ${searchedForums
+            .map(
+              (fid) => {
+                const count = state.forumCounts[fid] || 0;
+                return `<button class="filter-toggle ${state.visibleCategories.has(fid) ? "active" : ""}" data-filter-forum="${fid}" title="${state.visibleCategories.has(fid) ? "Hide" : "Show"} ${FORUM_NAMES[fid] || fid} results">
+              <span class="filter-toggle-dot"></span>
+              ${fid} - ${FORUM_NAMES[fid] || "Forum"}
+              ${count ? `<span class="filter-toggle-count">${count}</span>` : ""}
+            </button>`;
+              },
+            )
+            .join("")}
+        </div>
+      </div>`
+    : "";
+
+  let listHtml = "";
+  if (state.loading) {
+    listHtml = `<div class="results-list">${renderSkeleton()}</div>`;
+  } else if (!state.results.length && state.query) {
+    listHtml = `
       <div class="empty-state">
         <div class="icon">🔍</div>
         <h3>No results found</h3>
         <p>Try a different search term or switch tabs.</p>
       </div>`;
+  } else if (state.results.length) {
+    listHtml = `<div class="results-list">
+      ${state.results.map((r, i) => renderCard(r, i)).join("")}
+    </div>`;
   }
 
-  if (!state.results.length) {
-    return '';
-  }
-
-  const hasCompletedCmds =
-    [...state.completedCards.values()].some((c) => c.ok && (c.sendCommand || c.dlCommand)) ||
-    [...state.completedThreadPosts.values()].some((c) => c.ok && (c.sendCommand || c.dlCommand));
+  if (!state.query && !state.loading) return "";
 
   return `
-    <div class="status-bar fade-in">
+    <div class="status-bar ${skipAnim ? "" : "fade-in"}">
       <div class="status-info">
-        <span class="status-count">${state.totalResults}</span>
+        <span class="status-count">${showForumToggles ? `${state.totalResults} / ${state.totalUnfiltered}` : state.totalResults}</span>
         <span>results for "<strong>${state.query}</strong>"</span>
       </div>
       <div class="status-actions">
@@ -320,20 +359,32 @@ function renderResults(): string {
           ${svgIcon("download")} Export
         </button>
         <div class="pagination">
-          <button class="icon-btn" id="prev-page" ${state.page <= 1 ? "disabled" : ""}>${svgIcon("chevron_left")}</button>
-          <span class="page-info">${state.page} / ${state.totalPages}</span>
-          <button class="icon-btn" id="next-page" ${state.page >= state.totalPages ? "disabled" : ""}>${svgIcon("chevron_right")}</button>
+          <button class="icon-btn" id="first-page" ${state.page <= 1 ? "disabled" : ""} title="First page">${svgIcon("chevrons_left")}</button>
+          <button class="icon-btn" id="prev-page" ${state.page <= 1 ? "disabled" : ""} title="Previous page">${svgIcon("chevron_left")}</button>
+          <div class="page-jump">
+            <input type="number" id="page-input" class="page-input" value="${state.page}" min="1" max="${state.totalPages}" title="Jump to page">
+            <span class="page-total">/ ${state.totalPages}</span>
+          </div>
+          <button class="icon-btn" id="next-page" ${state.page >= state.totalPages ? "disabled" : ""} title="Next page">${svgIcon("chevron_right")}</button>
+          <button class="icon-btn" id="last-page" ${state.page >= state.totalPages ? "disabled" : ""} title="Last page">${svgIcon("chevrons_right")}</button>
         </div>
       </div>
     </div>
-    <div class="results-list">
-      ${state.results.map((r, i) => renderCard(r, i)).join("")}
-    </div>`;
+    ${filterTogglesHtml}
+    ${listHtml}`;
 }
 
 // ====== SEARCH ======
-async function doSearch(query: string, page = 1): Promise<void> {
+async function doSearch(query: string, page = 1, isNewSearch = true): Promise<void> {
   if (!query.trim()) return;
+
+  if (isNewSearch) {
+    if (state.tab === "vg") {
+      state.visibleCategories = new Set([...state.vgForums]);
+    } else {
+      state.visibleCategories.clear();
+    }
+  }
 
   if (isThreadUrl(query.trim())) {
     state.query = query;
@@ -368,6 +419,7 @@ async function doSearch(query: string, page = 1): Promise<void> {
   state.query = query;
   state.page = page;
   state.loading = true;
+  state.isNewSearchLoading = isNewSearch;
   state.results = [];
   state.fetchingCards.clear();
   state.completedCards.clear();
@@ -381,19 +433,33 @@ async function doSearch(query: string, page = 1): Promise<void> {
 
   try {
     const forums = state.tab === "vg" ? [...state.vgForums] : undefined;
-    const data = await apiSearch(state.tab, query, page, forums);
+    const filterForums = state.tab === "vg" ? [...state.visibleCategories] : undefined;
+    
+    // Ensure a minimum 300ms loading time for smooth skeleton fade animations
+    // instead of an instantaneous harsh blink when loading from cache.
+    const [data] = await Promise.all([
+      apiSearch(state.tab, query, page, forums, filterForums),
+      new Promise((resolve) => setTimeout(resolve, 300)),
+    ]);
     state.results = data.results || [];
     state.totalResults = data.total || state.results.length;
+    state.totalUnfiltered = data.totalUnfiltered || state.totalResults;
+    state.forumCounts = data.forumCounts || {};
     state.totalPages = Math.max(1, Math.ceil(state.totalResults / 20));
+    
     state.loading = false;
+    state.isNewSearchLoading = false;
     const elapsed = ((Date.now() - state.searchStartTime!) / 1000).toFixed(1);
     state.searchStartTime = null;
     state.searchElapsed = 0;
     render();
-    toast(`Found ${state.totalResults} results in ${elapsed}s`, "success");
-    if (page === 1) celebrate();
+    if (isNewSearch) {
+      toast(`Found ${state.totalResults} results in ${elapsed}s`, "success");
+      if (page === 1) celebrate();
+    }
   } catch (err) {
     state.loading = false;
+    state.isNewSearchLoading = false;
     state.searchStartTime = null;
     state.searchElapsed = 0;
     state.results = [];

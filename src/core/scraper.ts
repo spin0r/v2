@@ -195,7 +195,7 @@ export class ViperGirlsDownloader {
 
   async searchForum(
     query: string,
-    forumIds: number | number[] = [302, 303, 304],
+    forumIds: number | number[] = [268, 302, 303, 304],
   ): Promise<[SearchResult[], string | null, number, number]> {
     const forums = Array.isArray(forumIds) ? forumIds : [forumIds];
     const params: Record<string, unknown> = {

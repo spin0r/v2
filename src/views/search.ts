@@ -341,6 +341,10 @@ function renderResults(skipAnim = false): string {
 
   if (!state.query && !state.loading) return "";
 
+  if (state.isNewSearchLoading) {
+    return listHtml;
+  }
+
   return `
     <div class="status-bar ${skipAnim ? "" : "fade-in"}">
       <div class="status-info">

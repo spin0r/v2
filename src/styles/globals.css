@@ -526,7 +526,7 @@ nav {
   font-size: 13px;
   font-weight: 600;
   border: none;
-  padding: 12px 0;
+  padding: 12px 20px;
   border-radius: 10px;
   cursor: pointer;
   transition: all var(--transition);
@@ -536,7 +536,7 @@ nav {
   gap: 8px;
   white-space: nowrap;
   flex-shrink: 0;
-  width: 165px;
+  min-width: 170px;
 }
 
 .search-btn span {

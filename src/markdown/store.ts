@@ -1,6 +1,16 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { nanoid } from 'nanoid';
+
+let persistTimer: ReturnType<typeof setTimeout>;
+const debouncedStorage: StateStorage = {
+  getItem: (key) => localStorage.getItem(key),
+  setItem: (key, value) => {
+    clearTimeout(persistTimer);
+    persistTimer = setTimeout(() => localStorage.setItem(key, value), 500);
+  },
+  removeItem: (key) => localStorage.removeItem(key),
+};
 
 export interface MdFile {
   id: string;
@@ -116,7 +126,7 @@ export const useStore = create<Store>()(
       setSidebar: (open) => set({ sidebarOpen: open }),
       setView: (view) => set({ view }),
     }),
-    { name: 'edtr-md-store' }
+    { name: 'edtr-md-store', storage: createJSONStorage(() => debouncedStorage) }
   )
 );
 

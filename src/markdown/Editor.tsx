@@ -1,45 +1,28 @@
-import { useEffect, useRef, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { marked } from 'marked';
 import { useStore, activeFile } from './store';
 import { useEditorShortcuts } from './useEditorShortcuts';
 
 marked.setOptions({ breaks: true, gfm: true } as object);
 
-/* ── Regex patterns for markdown link/URL detection ── */
-const LINK_RE    = /\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;      // [text](url)
-const IMG_RE     = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;      // ![alt](url)
-const AUTOLINK_RE = /(?<!\]\()(?<!\()(?<!")(https?:\/\/[^\s<>)]+)/g; // bare URLs
+const LINK_RE     = /\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+const IMG_RE      = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+const AUTOLINK_RE = /(?<!\]\()(?<!\()(?<!")(https?:\/\/[^\s<>)]+)/g;
 
-/**
- * Build highlighted HTML from raw markdown text.
- * Links and images get coloured spans; everything else stays plain.
- */
 function highlightSource(raw: string): string {
-  // Escape HTML first
-  const esc = raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-
-  // Phase 1: mark image links  ![alt](url)
+  const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let out = esc.replace(
     /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g,
     '<span class="hl-img">![$1](<span class="hl-url">$2</span>)</span>'
   );
-
-  // Phase 2: mark markdown links  [text](url)  — only ones not already wrapped
   out = out.replace(
     /(?<!!)(\[([^\]]*)\]\((https?:\/\/[^\s)]+)\))/g,
     '<span class="hl-link">[$2](<span class="hl-url">$3</span>)</span>'
   );
-
-  // Phase 3: bare auto-links (not already inside a span)
   out = out.replace(
     /(?<!<span class="hl-url">)(?<!<span class="hl-link">)(?<!\()(https?:\/\/[^\s<>&)]+)/g,
     '<span class="hl-bare-url">$1</span>'
   );
-
-  // Preserve trailing newline so the backdrop always matches the textarea height
   if (out.endsWith('\n') || out === '') out += ' ';
   return out;
 }
@@ -49,57 +32,76 @@ export default function Editor() {
   const view = useStore(s => s.view);
   const updateContent = useStore(s => s.updateContent);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const backdropRef = useRef<HTMLDivElement>(null);
+  const backdropClipRef = useRef<HTMLDivElement>(null);
+  const [html, setHtml] = useState(() => marked.parse(file?.content ?? '') as string);
+  const [highlighted, setHighlighted] = useState(() => highlightSource(file?.content ?? ''));
 
-  const content = file?.content ?? '';
-  const html = marked.parse(content) as string;
-  const highlighted = useMemo(() => highlightSource(content), [content]);
+  const fileId = file?.id;
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta || !file) return;
+    ta.value = file.content;
+    ta.scrollTop = 0;
+    if (backdropClipRef.current) backdropClipRef.current.scrollTop = 0;
+    setHtml(marked.parse(file.content) as string);
+    setHighlighted(highlightSource(file.content));
+  }, [fileId]);
+
+  // rAF loop: always in sync regardless of scroll cause (selection, Ctrl+F, typing, etc.)
+  useEffect(() => {
+    // Measure actual scrollbar width and apply to backdrop so text wraps identically
+    const ta = textareaRef.current;
+    const clip = backdropClipRef.current;
+    if (ta && clip) {
+      const sw = ta.offsetWidth - ta.clientWidth;
+      const bd = clip.firstElementChild as HTMLElement | null;
+      if (bd) bd.style.paddingRight = `calc(24px + ${sw}px)`;
+    }
+
+    let rafId: number;
+    const loop = () => {
+      const ta = textareaRef.current;
+      const clip = backdropClipRef.current;
+      if (ta && clip) clip.scrollTop = ta.scrollTop;
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const showEditor = view === 'split' || view === 'editor';
   const showPreview = view === 'split' || view === 'preview';
 
-  /* ── Sync scroll between textarea and backdrop ── */
-  const syncScroll = useCallback((e: React.UIEvent<HTMLElement>) => {
-    const ta = textareaRef.current;
-    const bd = backdropRef.current;
-    if (!ta || !bd) return;
-    
-    if (e.target === ta) {
-      bd.scrollTop = ta.scrollTop;
-      bd.scrollLeft = ta.scrollLeft;
-    } else if (e.target === bd) {
-      ta.scrollTop = bd.scrollTop;
-      ta.scrollLeft = bd.scrollLeft;
-    }
-  }, []);
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    updateContent(val);
+    setHighlighted(highlightSource(val));
+    setHtml(marked.parse(val) as string);
+  }, [updateContent]);
 
   const handleKeyDown = useEditorShortcuts(updateContent);
 
-  // focus editor when switching to editor view
   useEffect(() => {
     if (view === 'editor') textareaRef.current?.focus();
-  }, [view, file?.id]);
+  }, [view, fileId]);
 
   return (
     <div className="flex flex-1 overflow-hidden min-h-0">
       {showEditor && (
         <div className={`editor-pane ${view === 'split' ? 'editor-pane--split' : 'editor-pane--full'}`}>
-          {/* Highlight backdrop — sits behind the transparent textarea */}
-          <div
-            ref={backdropRef}
-            className="editor-backdrop"
-            aria-hidden="true"
-            onScroll={syncScroll}
-            dangerouslySetInnerHTML={{ __html: highlighted }}
-          />
-          {/* Real textarea — fully transparent text, captures all input */}
+          {/* Backdrop: clip scrolls in sync with textarea via rAF */}
+          <div ref={backdropClipRef} className="editor-backdrop-clip" aria-hidden="true">
+            <div
+              className="editor-backdrop"
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+            />
+          </div>
           <textarea
             ref={textareaRef}
             className="editor-textarea"
-            value={content}
-            onChange={e => updateContent(e.target.value)}
+            defaultValue={file?.content ?? ''}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
-            onScroll={syncScroll}
             spellCheck={false}
             placeholder="Start writing…"
           />
@@ -107,10 +109,7 @@ export default function Editor() {
       )}
       {showPreview && (
         <div className={`preview-pane ${view === 'split' ? '' : 'preview-pane--full'}`}>
-          <div
-            className="prose-md"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <div className="prose-md" dangerouslySetInnerHTML={{ __html: html }} />
         </div>
       )}
     </div>

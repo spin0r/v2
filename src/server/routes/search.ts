@@ -9,8 +9,8 @@ export async function handleVgSearch(params: URLSearchParams, res: ServerRespons
 
   const forumsParam = params.get("forums");
   const forums = forumsParam
-    ? forumsParam.split(",").map(Number).filter((n) => [268, 302, 303, 304].includes(n))
-    : [268, 302, 303, 304];
+    ? forumsParam.split(",").map(Number).filter((n) => [238, 268, 302, 303, 304].includes(n))
+    : [238, 268, 302, 303, 304];
   if (!forums.length) return sendJSON(res, 400, { error: "No valid forums selected" });
 
   const key = `${query.toLowerCase()}:${forums.sort().join(",")}`;

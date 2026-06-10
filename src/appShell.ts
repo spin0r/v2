@@ -61,7 +61,7 @@ export const state: AppState = {
     } catch {
       /* ignore */
     }
-    return new Set([268, 302, 303, 304]);
+    return new Set([238, 268, 302, 303, 304]);
   })(),
   query: "",
   loading: false,

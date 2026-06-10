@@ -13,6 +13,7 @@ import { renderThreadView } from "./thread.ts";
 
 // Forum ID → display name map
 const FORUM_NAMES: Record<number, string> = {
+  238: "Hardcore Photo Sets (Archive)",
   268: "Scene Photos",
   302: "Softcore Photo Sets",
   303: "Artistic Photo Sets",
@@ -38,6 +39,7 @@ function renderHero(skipAnim: boolean): string {
     <div class="forum-toggles">
       <span class="forum-toggles-label">Forums:</span>
       ${[
+        { id: 238, name: "238-Hardcore-Photo-Sets-(Archive)" },
         { id: 268, name: "268-Scene-Photos" },
         { id: 302, name: "302-Softcore-Photo-Sets" },
         { id: 303, name: "303-Artistic-Photo-Sets" },

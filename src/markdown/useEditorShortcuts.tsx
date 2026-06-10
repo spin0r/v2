@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import type { Snippet } from './store';
 
 /**
  * VSCode-like keyboard shortcuts for a <textarea> markdown editor.
@@ -6,7 +7,7 @@ import { useCallback } from 'react';
  * Uses `document.execCommand` (with `inputEvent` fallback) to mutate the
  * textarea value so the browser's native Undo/Redo stack is preserved.
  */
-export function useEditorShortcuts(updateContent: (v: string) => void) {
+export function useEditorShortcuts(updateContent: (v: string) => void, snippets: Snippet[]) {
   return useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
     const val = ta.value;
@@ -95,6 +96,21 @@ export function useEditorShortcuts(updateContent: (v: string) => void) {
     // ── Enter — auto-indent + list continuation ──────────────────────
 
     if (e.key === 'Enter' && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      // ── Snippet expansion ──────────────────────────────────────────
+      // Check if the word immediately before the cursor matches a snippet keyword
+      const textBefore = val.slice(0, start);
+      const wordMatch = textBefore.match(/(\S+)$/);
+      if (wordMatch && snippets.length > 0) {
+        const word = wordMatch[1];
+        const snippet = snippets.find(s => s.keyword === word);
+        if (snippet) {
+          e.preventDefault();
+          const wordStart = start - word.length;
+          replaceRange(wordStart, end, snippet.content, wordStart + snippet.content.length);
+          return;
+        }
+      }
+
       const [ls] = lineRange(start);
       const line = val.slice(ls, start);
 
@@ -361,5 +377,5 @@ export function useEditorShortcuts(updateContent: (v: string) => void) {
       }
       return;
     }
-  }, [updateContent]);
+  }, [updateContent, snippets]);
 }

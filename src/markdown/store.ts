@@ -19,6 +19,12 @@ export interface MdFile {
   updatedAt: number;
 }
 
+export interface Snippet {
+  id: string;
+  keyword: string;
+  content: string;
+}
+
 const WELCOME = `# Welcome to Markdown
 
 A minimal markdown editor that lives in your browser.
@@ -63,6 +69,7 @@ interface Store {
   activeId: string;
   sidebarOpen: boolean;
   view: 'split' | 'editor' | 'preview';
+  snippets: Snippet[];
   // actions
   newFile: () => void;
   setActive: (id: string) => void;
@@ -73,6 +80,9 @@ interface Store {
   importFile: (file: MdFile) => void;
   setSidebar: (open: boolean) => void;
   setView: (v: Store['view']) => void;
+  addSnippet: (keyword: string, content: string) => void;
+  updateSnippet: (id: string, keyword: string, content: string) => void;
+  deleteSnippet: (id: string) => void;
 }
 
 const defaultFile: MdFile = { id: 'welcome', name: 'welcome.md', content: WELCOME, updatedAt: Date.now() };
@@ -84,6 +94,7 @@ export const useStore = create<Store>()(
       activeId: 'welcome',
       sidebarOpen: true,
       view: 'split',
+      snippets: [],
 
       newFile: () => {
         const id = nanoid(8);
@@ -125,6 +136,15 @@ export const useStore = create<Store>()(
 
       setSidebar: (open) => set({ sidebarOpen: open }),
       setView: (view) => set({ view }),
+
+      addSnippet: (keyword, content) => {
+        const id = nanoid(8);
+        set(s => ({ snippets: [...s.snippets, { id, keyword, content }] }));
+      },
+      updateSnippet: (id, keyword, content) =>
+        set(s => ({ snippets: s.snippets.map(sn => sn.id === id ? { ...sn, keyword, content } : sn) })),
+      deleteSnippet: (id) =>
+        set(s => ({ snippets: s.snippets.filter(sn => sn.id !== id) })),
     }),
     { name: 'edtr-md-store', storage: createJSONStorage(() => debouncedStorage) }
   )

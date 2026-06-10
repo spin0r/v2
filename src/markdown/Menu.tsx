@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useStore, activeFile, MdFile } from './store';
+import { useEffect, useRef, useState } from 'react';
+import { useStore, activeFile, MdFile, Snippet } from './store';
 import { nanoid } from 'nanoid';
 
 const SHORTCUTS = [
@@ -47,6 +47,10 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
   const renameFile = useStore(s => s.renameFile);
   const deleteFile = useStore(s => s.deleteFile);
   const importFile = useStore(s => s.importFile);
+  const snippets = useStore(s => s.snippets);
+  const addSnippet = useStore(s => s.addSnippet);
+  const updateSnippet = useStore(s => s.updateSnippet);
+  const deleteSnippet = useStore(s => s.deleteSnippet);
   const ref = useRef<HTMLDivElement>(null);
 
   // position below anchor
@@ -203,6 +207,206 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
     ));
   };
 
+  const handleSnippets = () => {
+    onClose();
+
+    const SnippetsManager = () => {
+      const snippets = useStore(s => s.snippets);
+      const addSnippet = useStore(s => s.addSnippet);
+      const updateSnippet = useStore(s => s.updateSnippet);
+      const deleteSnippet = useStore(s => s.deleteSnippet);
+      const [newKeyword, setNewKeyword] = useState('');
+      const [newContent, setNewContent] = useState('');
+      const [editId, setEditId] = useState<string | null>(null);
+      const [editKeyword, setEditKeyword] = useState('');
+      const [editContent, setEditContent] = useState('');
+
+      const handleAdd = () => {
+        if (!newKeyword.trim() || !newContent.trim()) return;
+        addSnippet(newKeyword.trim(), newContent);
+        setNewKeyword('');
+        setNewContent('');
+      };
+
+      const startEdit = (sn: Snippet) => {
+        setEditId(sn.id);
+        setEditKeyword(sn.keyword);
+        setEditContent(sn.content);
+      };
+
+      const saveEdit = () => {
+        if (!editId || !editKeyword.trim()) return;
+        updateSnippet(editId, editKeyword.trim(), editContent);
+        setEditId(null);
+      };
+
+      const inputStyle: React.CSSProperties = {
+        background: 'rgba(237,236,228,0.04)',
+        border: '1px solid rgba(237,236,228,0.12)',
+        borderRadius: '8px',
+        padding: '8px 12px',
+        color: '#edecec',
+        fontSize: '13px',
+        fontFamily: 'JetBrains Mono, monospace',
+        outline: 'none',
+        width: '100%',
+      };
+
+      const textareaStyle: React.CSSProperties = {
+        ...inputStyle,
+        minHeight: '80px',
+        resize: 'vertical' as const,
+      };
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Existing snippets */}
+          {snippets.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {snippets.map(sn => (
+                <div key={sn.id} style={{
+                  background: 'rgba(237,236,228,0.03)',
+                  border: '1px solid rgba(237,236,228,0.08)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                }}>
+                  {editId === sn.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'rgba(237,236,236,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500, marginBottom: '4px', display: 'block' }}>Keyword</label>
+                        <input
+                          style={inputStyle}
+                          value={editKeyword}
+                          onChange={e => setEditKeyword(e.target.value)}
+                          placeholder="keyword"
+                          autoFocus
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '10px', color: 'rgba(237,236,236,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500, marginBottom: '4px', display: 'block' }}>Content</label>
+                        <textarea
+                          style={textareaStyle}
+                          value={editContent}
+                          onChange={e => setEditContent(e.target.value)}
+                          placeholder="snippet content"
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setEditId(null)}
+                          style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '6px', background: 'rgba(237,236,228,0.05)', color: 'rgba(237,236,236,0.6)', border: 'none', cursor: 'pointer' }}
+                        >Cancel</button>
+                        <button
+                          onClick={saveEdit}
+                          style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '6px', background: '#c08532', color: '#14120b', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                        >Save</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                          <span style={{
+                            background: 'rgba(192,133,50,0.15)',
+                            color: '#c08532',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontFamily: 'JetBrains Mono, monospace',
+                            fontWeight: 600,
+                          }}>{sn.keyword}</span>
+                          <span style={{ fontSize: '11px', color: 'rgba(237,236,236,0.3)' }}>+ Enter</span>
+                        </div>
+                        <pre style={{
+                          margin: 0,
+                          fontSize: '11px',
+                          color: 'rgba(237,236,236,0.5)',
+                          fontFamily: 'JetBrains Mono, monospace',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all',
+                          maxHeight: '80px',
+                          overflow: 'hidden',
+                        }}>{sn.content}</pre>
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                        <button
+                          onClick={() => startEdit(sn)}
+                          style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px', background: 'rgba(237,236,228,0.06)', color: 'rgba(237,236,236,0.6)', border: 'none', cursor: 'pointer' }}
+                          title="Edit"
+                        >✎</button>
+                        <button
+                          onClick={() => deleteSnippet(sn.id)}
+                          style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '4px', background: 'rgba(248,113,113,0.1)', color: '#f87171', border: 'none', cursor: 'pointer' }}
+                          title="Delete"
+                        >✕</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {snippets.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '16px 0', color: 'rgba(237,236,236,0.3)', fontSize: '13px' }}>
+              No snippets yet. Add one below.
+            </div>
+          )}
+
+          {/* Add new snippet form */}
+          <div style={{
+            background: 'rgba(237,236,228,0.02)',
+            border: '1px solid rgba(237,236,228,0.1)',
+            borderRadius: '10px',
+            padding: '14px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <div style={{ fontSize: '12px', color: 'rgba(237,236,236,0.5)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Add New Snippet</div>
+            <div>
+              <label style={{ fontSize: '10px', color: 'rgba(237,236,236,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500, marginBottom: '4px', display: 'block' }}>Keyword (trigger)</label>
+              <input
+                style={inputStyle}
+                value={newKeyword}
+                onChange={e => setNewKeyword(e.target.value)}
+                placeholder="e.g. sa"
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '10px', color: 'rgba(237,236,236,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 500, marginBottom: '4px', display: 'block' }}>Content (expanded text)</label>
+              <textarea
+                style={textareaStyle}
+                value={newContent}
+                onChange={e => setNewContent(e.target.value)}
+                placeholder={'/s \n\n<a href="">Source</a>\n/d'}
+              />
+            </div>
+            <button
+              onClick={handleAdd}
+              disabled={!newKeyword.trim() || !newContent.trim()}
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                borderRadius: '8px',
+                background: newKeyword.trim() && newContent.trim() ? '#c08532' : 'rgba(237,236,228,0.05)',
+                color: newKeyword.trim() && newContent.trim() ? '#14120b' : 'rgba(237,236,236,0.3)',
+                border: 'none',
+                cursor: newKeyword.trim() && newContent.trim() ? 'pointer' : 'default',
+                fontWeight: 600,
+                alignSelf: 'flex-end',
+                transition: 'all 0.15s ease',
+              }}
+            >Add Snippet</button>
+          </div>
+        </div>
+      );
+    };
+
+    onShowModal('Custom Snippets', <SnippetsManager />);
+  };
+
   return (
       <div
         ref={ref}
@@ -241,6 +445,7 @@ export default function Menu({ anchor, onClose, onShowModal }: Props) {
       {[
         { label: 'Keyboard Shortcuts', action: handleShortcuts },
         { label: 'Markdown Cheatsheet', action: handleCheatsheet },
+        { label: 'Custom Snippets', action: handleSnippets },
       ].map(({ label, action }) => (
         <button
           key={label}

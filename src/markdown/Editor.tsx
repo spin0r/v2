@@ -31,6 +31,7 @@ export default function Editor() {
   const file = useStore(activeFile);
   const view = useStore(s => s.view);
   const updateContent = useStore(s => s.updateContent);
+  const snippets = useStore(s => s.snippets);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const backdropClipRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(() => marked.parse(file?.content ?? '') as string);
@@ -79,7 +80,7 @@ export default function Editor() {
     setHtml(marked.parse(val) as string);
   }, [updateContent]);
 
-  const handleKeyDown = useEditorShortcuts(updateContent);
+  const handleKeyDown = useEditorShortcuts(updateContent, snippets);
 
   useEffect(() => {
     if (view === 'editor') textareaRef.current?.focus();

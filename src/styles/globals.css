@@ -2854,11 +2854,16 @@ main {
   text-decoration-color: rgba(167, 139, 250, 0.25);
   text-underline-offset: 2px;
 }
-.hl-bare-url {
+.hl-bare-url, .hl-html-url {
   color: #5bbea6;                      /* teal for bare URLs */
   text-decoration: underline;
   text-decoration-color: rgba(91, 190, 166, 0.3);
   text-underline-offset: 2px;
+}
+.hl-hashtag {
+  color: #d4a04a;                      /* gold/amber for hashtags */
+  background: rgba(212, 160, 74, 0.08);
+  border-radius: 3px;
 }
 
 /* Preview pane */

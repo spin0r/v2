@@ -38,7 +38,7 @@ export function bindCardEvents(appEl: HTMLElement): void {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.fetchIdx || "0");
-      const r = state.results[idx];
+      const r = (state.resultFilterQuery ? state.allResults[idx] : state.results[idx]) ?? state.results[idx];
       if (!r) return;
       if (state.fetchingCards.has(idx)) return;
 

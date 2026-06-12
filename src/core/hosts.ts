@@ -19,7 +19,7 @@ export const IMAGE_HOSTS: string[] = [
 export const HOST_MAP: [string, string][] = [
   ["imx.to", "extractImxTo"],
   ["imagebam.com", "extractImagebam"],
-  ["pixhost.to", "extractPixhost"],
+  ["pixhost.cc", "extractPixhost"],
   ["vipr.im", "extractViprIm"],
   ["imagetwist.com", "extractImagetwist"],
   ["postimg.cc", "extractPostimg"],

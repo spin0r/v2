@@ -89,22 +89,35 @@ export class ImageHostExtractor {
     try {
       const html = await this._get(url);
       const $ = this._load(html);
-      for (const el of $("script").toArray()) {
-        const text = $(el).html() || "";
-        if (text.includes("pswp_items")) {
-          const urls = [...text.matchAll(/https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)/gi)].map((m) => m[0]);
-          if (urls.length) {
-            const best = urls.find((u) => !/\/thumbs\/|\/show\//.test(u)) || urls[0];
-            if (!/\/show\//.test(best)) return best;
-          }
-        }
-      }
+
+      // Try DOM image selector first — it's specific to the current page
       let src = $("img#image, img#show_image, img.image-center").first().attr("src");
       if (src && !/\/show\//.test(src)) {
         if (src.includes("/thumbs/"))
           src = src.replace("//t", "//img").replace("/thumbs/", "/images/");
         return src;
       }
+
+      // pswp_items contains ALL gallery images, so we must match the current
+      // page's image rather than blindly picking the first URL
+      const urlFilename = url.split("/").pop()?.replace(/\.\w+$/, "") || "";
+      for (const el of $("script").toArray()) {
+        const text = $(el).html() || "";
+        if (text.includes("pswp_items")) {
+          const urls = [...text.matchAll(/https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)/gi)].map((m) => m[0]);
+          const nonThumb = urls.filter((u) => !/\/thumbs\/|\/show\//.test(u));
+          if (nonThumb.length) {
+            // Try matching by filename from the input URL
+            if (urlFilename) {
+              const match = nonThumb.find((u) => u.includes(urlFilename));
+              if (match) return match;
+            }
+            // Safe to use if there's only one full-size image
+            if (nonThumb.length === 1) return nonThumb[0];
+          }
+        }
+      }
+
       return this._og($);
     } catch {
       return null;

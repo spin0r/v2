@@ -1,7 +1,7 @@
 export const IMAGE_HOSTS: string[] = [
   "imx.to",
   "imagebam.com",
-  "pixhost.to",
+  "pixhost.cc",
   "imgbox.com",
   "vipr.im",
   "imagetwist.com",

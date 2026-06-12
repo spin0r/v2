@@ -34,6 +34,7 @@ function renderThreadView(): string {
       if (isFetchingPost) {
         const progressText = `${fetchInfo?.extracted ?? 0}/${fetchInfo?.total ?? "?"}`;
         actionsHtml = `<div class="result-actions">
+        ${postUrl ? `<button class="action-btn" data-open="${postUrl}" title="Open post in new tab">${svgIcon("external")}</button>` : ""}
         <div class="inline-progress">
           <div class="spinner" style="width:14px;height:14px;border-width:2px"></div>
           <span class="progress-label">Extracting</span>

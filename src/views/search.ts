@@ -124,6 +124,7 @@ function renderCard(r: SearchResult, idx: number): string {
     const progressText = phase === "extracting" ? `${fetchInfo?.extracted ?? 0}/${fetchInfo?.total ?? "?"}` : "Scraping…";
     actionsHtml = `
       <div class="result-actions">
+        <button class="action-btn" data-open="${r.url}" title="Open thread">${svgIcon("external")}</button>
         <div class="inline-progress">
           <div class="spinner" style="width:14px;height:14px;border-width:2px"></div>
           <span class="progress-label">${phase === "extracting" ? "Extracting" : "Scraping…"}</span>

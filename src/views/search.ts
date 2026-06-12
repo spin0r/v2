@@ -304,6 +304,36 @@ function renderResults(skipAnim = false): string {
   const searchedForums = isVg ? [...state.vgForums] : [];
   const showForumToggles = isVg && searchedForums.length > 1;
 
+  // Result filter search bar — keyword filter state
+  const filterQ = (state.resultFilterQuery || "").trim().toLowerCase();
+  const filterPool = state.allResultsLoaded ? state.allResults : state.results;
+  const matchCount = filterQ
+    ? filterPool.filter(r => (r.title || "").toLowerCase().includes(filterQ)).length
+    : 0;
+  const isFiltering = !!filterQ;
+
+  // Build filter strip HTML
+  const filterStripHtml = state.query && !state.loading
+    ? `<div class="result-filter-divider ${skipAnim ? '' : 'fade-in'} ${isFiltering ? 'active' : ''}">
+        ${svgIcon("search")}
+        <input
+          id="result-filter-input"
+          class="divider-input"
+          type="text"
+          placeholder="Search within these ${state.totalPages > 1 ? state.totalPages + ' pages' : 'results'}…"
+          value="${(state.resultFilterQuery || '').replace(/"/g, '&quot;')}"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        ${state.allResultsLoading
+          ? `<span class="filter-divider-meta loading"><div class="spinner"></div>${state.allResultsProgress || 'Loading…'}</span>`
+          : isFiltering
+            ? `<span class="filter-divider-meta matches">${matchCount} match${matchCount === 1 ? '' : 'es'}</span><button class="filter-divider-clear" id="result-filter-clear" title="Clear (Esc)">✕</button>`
+            : ''
+        }
+      </div>`
+    : '';
+
   // Forum filter toggles
   const filterTogglesHtml = showForumToggles && state.query
     ? `<div class="post-search-filters ${skipAnim ? "" : "fade-in"}">
@@ -336,9 +366,30 @@ function renderResults(skipAnim = false): string {
         <p>Try a different search term or switch tabs.</p>
       </div>`;
   } else if (state.results.length) {
-    listHtml = `<div class="results-list">
-      ${state.results.map((r, i) => renderCard(r, i)).join("")}
-    </div>`;
+    // Apply keyword filter across all results or current page
+    if (filterQ) {
+      const sourceResults = state.allResultsLoaded ? state.allResults : state.results;
+      const filteredResults = sourceResults
+        .map((r, i) => ({ r, i }))
+        .filter(({ r }) => (r.title || "").toLowerCase().includes(filterQ));
+
+      if (filteredResults.length === 0) {
+        listHtml = `
+          <div class="empty-state">
+            <div class="icon">🔎</div>
+            <h3>No matches for "${state.resultFilterQuery}"</h3>
+            <p>Try a different keyword or clear the filter.</p>
+          </div>`;
+      } else {
+        listHtml = `<div class="results-list">
+          ${filteredResults.map(({ r, i }) => renderCard(r, i)).join("")}
+        </div>`;
+      }
+    } else {
+      listHtml = `<div class="results-list">
+        ${state.results.map((r, i) => renderCard(r, i)).join("")}
+      </div>`;
+    }
   }
 
   if (!state.query && !state.loading) return "";
@@ -350,7 +401,7 @@ function renderResults(skipAnim = false): string {
   return `
     <div class="status-bar ${skipAnim ? "" : "fade-in"}">
       <div class="status-info">
-        <span class="status-count">${showForumToggles ? `${state.totalResults} / ${state.totalUnfiltered}` : state.totalResults}</span>
+        <span class="status-count">${isFiltering ? `${matchCount} / ${state.totalResults}` : showForumToggles ? `${state.totalResults} / ${state.totalUnfiltered}` : state.totalResults}</span>
         <span>results for "<strong>${state.query}</strong>"</span>
       </div>
       <div class="status-actions">
@@ -364,7 +415,7 @@ function renderResults(skipAnim = false): string {
         <button class="export-btn" id="export-btn" title="Export search results as JSON">
           ${svgIcon("download")} Export
         </button>
-        <div class="pagination">
+        ${isFiltering ? '' : `<div class="pagination">
           <button class="icon-btn" id="first-page" ${state.page <= 1 ? "disabled" : ""} title="First page">${svgIcon("chevrons_left")}</button>
           <button class="icon-btn" id="prev-page" ${state.page <= 1 ? "disabled" : ""} title="Previous page">${svgIcon("chevron_left")}</button>
           <div class="page-jump">
@@ -373,10 +424,11 @@ function renderResults(skipAnim = false): string {
           </div>
           <button class="icon-btn" id="next-page" ${state.page >= state.totalPages ? "disabled" : ""} title="Next page">${svgIcon("chevron_right")}</button>
           <button class="icon-btn" id="last-page" ${state.page >= state.totalPages ? "disabled" : ""} title="Last page">${svgIcon("chevrons_right")}</button>
-        </div>
+        </div>`}
       </div>
     </div>
     ${filterTogglesHtml}
+    ${filterStripHtml}
     ${listHtml}`;
 }
 
@@ -427,6 +479,13 @@ async function doSearch(query: string, page = 1, isNewSearch = true): Promise<vo
   state.loading = true;
   state.isNewSearchLoading = isNewSearch;
   state.results = [];
+  if (isNewSearch) {
+    state.resultFilterQuery = "";
+    state.allResults = [];
+    state.allResultsLoaded = false;
+    state.allResultsLoading = false;
+    state.allResultsProgress = "";
+  }
   state.fetchingCards.clear();
   state.completedCards.clear();
   state.scrapedCards.clear();
@@ -474,4 +533,78 @@ async function doSearch(query: string, page = 1, isNewSearch = true): Promise<vo
   }
 }
 
-export { renderHero, renderSkeleton, renderCard, renderResults, doSearch };
+// ====== FETCH ALL RESULTS FOR FILTER ======
+let fetchAllAbort: AbortController | null = null;
+
+async function fetchAllResults(): Promise<void> {
+  // Abort any previous fetch-all in progress
+  if (fetchAllAbort) fetchAllAbort.abort();
+  const abort = new AbortController();
+  fetchAllAbort = abort;
+
+  if (state.allResultsLoaded || state.allResultsLoading) return;
+  if (state.totalPages <= 1) {
+    // Only 1 page, allResults = current page results
+    state.allResults = [...state.results];
+    state.allResultsLoaded = true;
+    return;
+  }
+
+  state.allResultsLoading = true;
+  state.allResultsProgress = `1/${state.totalPages} pages`;
+  // Seed with current page results
+  state.allResults = [...state.results];
+  render();
+
+  const forums = state.tab === "vg" ? [...state.vgForums] : undefined;
+  const filterForums = state.tab === "vg" ? [...state.visibleCategories] : undefined;
+  const query = state.query;
+  const tab = state.tab;
+  const totalPages = state.totalPages;
+  const currentPage = state.page;
+
+  try {
+    for (let p = 1; p <= totalPages; p++) {
+      if (abort.signal.aborted) return;
+      if (p === currentPage) continue; // Already have this page
+
+      const data = await apiSearch(tab, query, p, forums, filterForums);
+      if (abort.signal.aborted) return;
+
+      // Merge results (insert at correct position)
+      const pageResults = data.results || [];
+      // Simple append — we'll sort by original page order
+      state.allResults.push(...pageResults);
+      state.allResultsProgress = `${Math.min(p + (p > currentPage ? 0 : 1), totalPages)}/${totalPages} pages`;
+      render();
+      // Re-focus filter input after render
+      const restored = document.querySelector<HTMLInputElement>("#result-filter-input");
+      if (restored) {
+        restored.focus();
+        restored.selectionStart = restored.selectionEnd = restored.value.length;
+      }
+    }
+
+    if (!abort.signal.aborted) {
+      state.allResultsLoaded = true;
+      state.allResultsLoading = false;
+      state.allResultsProgress = "";
+      render();
+      const restored = document.querySelector<HTMLInputElement>("#result-filter-input");
+      if (restored) {
+        restored.focus();
+        restored.selectionStart = restored.selectionEnd = restored.value.length;
+      }
+      toast(`Loaded all ${state.allResults.length} results for filtering`, "success");
+    }
+  } catch (err) {
+    if (!abort.signal.aborted) {
+      state.allResultsLoading = false;
+      state.allResultsProgress = "";
+      render();
+      toast(`Failed to load all results: ${(err as Error).message}`, "error");
+    }
+  }
+}
+
+export { renderHero, renderSkeleton, renderCard, renderResults, doSearch, fetchAllResults };

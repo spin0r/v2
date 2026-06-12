@@ -49,6 +49,11 @@ export interface AppState {
   visibleCategories: Set<number>;
   totalUnfiltered: number;
   forumCounts: Record<number, number>;
+  resultFilterQuery: string;
+  allResults: SearchResult[];
+  allResultsLoaded: boolean;
+  allResultsLoading: boolean;
+  allResultsProgress: string;
 }
 
 export const state: AppState = {
@@ -97,6 +102,11 @@ export const state: AppState = {
   visibleCategories: new Set(),
   totalUnfiltered: 0,
   forumCounts: {},
+  resultFilterQuery: "",
+  allResults: [],
+  allResultsLoaded: false,
+  allResultsLoading: false,
+  allResultsProgress: "",
 };
 
 let appEl: HTMLElement | null = null;

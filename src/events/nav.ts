@@ -1,6 +1,6 @@
 import { state, render, copyAllCmdBlocks, exportSearchData } from "../appShell.ts";
 import { toast } from "../utils.ts";
-import { doSearch } from "../views/search.ts";
+import { doSearch, fetchAllResults } from "../views/search.ts";
 import { fetchHistory } from "../views/history.ts";
 import { fetchRssFeed } from "../views/rss.ts";
 
@@ -90,6 +90,38 @@ export function bindNavEvents(appEl: HTMLElement): void {
       doSearch(state.query, 1, false);
     });
   });
+
+  // Result filter (in-page keyword search)
+  const filterInput = appEl.querySelector<HTMLInputElement>("#result-filter-input");
+  if (filterInput) {
+    filterInput.addEventListener("input", () => {
+      state.resultFilterQuery = filterInput.value;
+      // Start loading all pages on first keystroke
+      if (filterInput.value.trim() && !state.allResultsLoaded && !state.allResultsLoading) {
+        fetchAllResults();
+      }
+      render();
+      // Re-focus and restore cursor after render
+      const restored = document.querySelector<HTMLInputElement>("#result-filter-input");
+      if (restored) {
+        restored.focus();
+        restored.selectionStart = restored.selectionEnd = filterInput.selectionStart ?? restored.value.length;
+      }
+    });
+    filterInput.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        state.resultFilterQuery = "";
+        render();
+      }
+    });
+  }
+  const filterClear = appEl.querySelector("#result-filter-clear");
+  if (filterClear) {
+    filterClear.addEventListener("click", () => {
+      state.resultFilterQuery = "";
+      render();
+    });
+  }
 
   // Search
   const input = appEl.querySelector<HTMLInputElement>("#search-input");

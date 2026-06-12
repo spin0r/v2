@@ -42,8 +42,11 @@ export default function Editor() {
   const snippets = useStore(s => s.snippets);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const backdropClipRef = useRef<HTMLDivElement>(null);
+  const lineNumsRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(() => marked.parse(file?.content ?? '') as string);
   const [highlighted, setHighlighted] = useState(() => highlightSource(file?.content ?? ''));
+  const lineCount = ((file?.content ?? '').split('\n').length);
+  const [lineNums, setLineNums] = useState(() => lineCount);
   const htmlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [cursorPos, setCursorPos] = useState(0);
@@ -70,6 +73,7 @@ export default function Editor() {
     if (backdropClipRef.current) backdropClipRef.current.scrollTop = 0;
     setHighlighted(highlightSource(file.content));
     setHtml(marked.parse(file.content) as string);
+    setLineNums(file.content.split('\n').length);
     setShowAutocomplete(false);
     const pos = ta.selectionStart;
     setCursorPos(pos);
@@ -90,8 +94,10 @@ export default function Editor() {
     const loop = () => {
       const ta = textareaRef.current;
       const clip = backdropClipRef.current;
+      const ln = lineNumsRef.current;
       if (ta && clip && ta.scrollTop !== lastScroll) {
         clip.scrollTop = lastScroll = ta.scrollTop;
+        if (ln) ln.scrollTop = lastScroll;
       }
       rafId = requestAnimationFrame(loop);
     };
@@ -135,6 +141,7 @@ export default function Editor() {
     const val = e.target.value;
     updateContent(val);
     setHighlighted(highlightSource(val));
+    setLineNums(val.split('\n').length);
     // Debounce preview render — not needed for typing feel
     if (htmlTimerRef.current) clearTimeout(htmlTimerRef.current);
     htmlTimerRef.current = setTimeout(() => setHtml(marked.parse(val) as string), 150);
@@ -219,6 +226,12 @@ export default function Editor() {
     <div className="flex flex-1 overflow-hidden min-h-0">
       {showEditor && (
         <div className={`editor-pane ${view === 'split' ? 'editor-pane--split' : 'editor-pane--full'}`}>
+          {/* Line number gutter */}
+          <div ref={lineNumsRef} className="editor-line-numbers" aria-hidden="true">
+            {Array.from({ length: lineNums }, (_, i) => (
+              <div key={i + 1}>{i + 1}</div>
+            ))}
+          </div>
           {/* Backdrop: clip scrolls in sync with textarea via rAF */}
           <div ref={backdropClipRef} className="editor-backdrop-clip" aria-hidden="true">
             <div

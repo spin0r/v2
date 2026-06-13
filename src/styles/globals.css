@@ -2726,7 +2726,7 @@ main {
 
 /* ===== MARKDOWN APP — Sidebar ===== */
 .md-sidebar {
-  width: 220px;
+  width: 170px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -2739,7 +2739,7 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 10px;
   height: 42px;                /* match topbar height */
   border-bottom: 1px solid rgba(237, 236, 228, 0.08);
   flex-shrink: 0;
@@ -2785,7 +2785,7 @@ main {
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 6px 14px;
+  padding: 5px 10px;
   border: none;
   border-left: 2px solid transparent;
   background: transparent;
@@ -2846,7 +2846,7 @@ main {
 /* Rename input */
 .md-sidebar-rename {
   width: 100%;
-  padding: 6px 14px;
+  padding: 5px 10px;
   border: none;
   border-left: 2px solid #c08532;
   background: rgba(237, 236, 228, 0.06);
@@ -2858,10 +2858,10 @@ main {
 
 /* ===== MARKDOWN EDITOR — Highlight Overlay ===== */
 
-/* Editor pane: positioned container for the backdrop + textarea stack */
+/* Editor pane: positioned container for the gutter + backdrop + textarea stack */
 .editor-pane {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   position: relative;
   overflow: hidden;
 }
@@ -2873,10 +2873,70 @@ main {
   width: 100%;
 }
 
+/* Hidden mirror — pixel-identical to textarea content area, used for line height measurement */
+.editor-mirror {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  visibility: hidden;
+  pointer-events: none;
+  box-sizing: border-box;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 24px;
+  white-space: normal;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+.editor-mirror > div {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  line-height: 24px;
+  min-height: 24px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* ── Line-number gutter ── */
+.editor-gutter {
+  flex-shrink: 0;
+  width: 36px;
+  overflow: hidden;
+  user-select: none;
+  background: rgba(20, 18, 11, 0.6);
+  border-right: 1px solid rgba(237, 236, 228, 0.06);
+  z-index: 2;
+}
+.editor-gutter-inner {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+.editor-gutter-line {
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  padding-right: 8px;
+  text-align: right;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 24px;
+  color: rgba(237, 236, 236, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.editor-gutter-line:hover {
+  color: rgba(212, 160, 74, 0.55);
+}
+
 /* Clip container — absolutely covers the textarea, hides overflowing backdrop content */
 .editor-backdrop-clip {
   position: absolute;
   inset: 0;
+  left: 36px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
@@ -2887,12 +2947,12 @@ main {
   box-sizing: border-box;
   width: 100%;
   padding: 24px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
-  line-height: 1.8;
+  line-height: 24px;
   color: rgba(237, 236, 236, 0.78);
 }
 
@@ -2901,27 +2961,43 @@ main {
   position: relative;
   z-index: 1;
   flex: 1;
-  width: 100%;
+  width: 0;
+  min-width: 0;
   background: transparent;
   resize: none;
   outline: none;
   padding: 24px;
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
-  line-height: 1.8;
-  color: transparent;               /* fully transparent — backdrop provides the visible text */
-  caret-color: #d4a04a;             /* accent-coloured caret stays visible */
+  line-height: 24px;
+  color: transparent;
+  caret-color: #d4a04a;
+  cursor: text;
   overflow-y: scroll;
-  scrollbar-gutter: stable;         /* always reserve scrollbar space so backdrop wraps identically */
+  overflow-x: scroll;
+  scrollbar-width: none;
   border: none;
-  -webkit-text-fill-color: transparent;  /* Safari */
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  -webkit-text-fill-color: transparent;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+}
+.editor-textarea::-webkit-scrollbar {
+  display: none;
 }
 .editor-textarea::placeholder {
   color: rgba(237, 236, 236, 0.2);
   -webkit-text-fill-color: rgba(237, 236, 236, 0.2);
+}
+/* Suppress duplicate highlight — text is transparent, backdrop shows through selection */
+.editor-textarea::selection {
+  background: rgba(192, 133, 50, 0.35);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.editor-textarea::-moz-selection {
+  background: rgba(192, 133, 50, 0.35);
+  color: transparent;
 }
 
 /* ── Highlight token colours ── */

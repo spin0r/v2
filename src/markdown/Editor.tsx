@@ -42,12 +42,11 @@ export default function Editor() {
   const snippets = useStore(s => s.snippets);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const backdropClipRef = useRef<HTMLDivElement>(null);
-  const lineNumsRef = useRef<HTMLDivElement>(null);
+  const gutterRef = useRef<HTMLDivElement>(null);
   const [html, setHtml] = useState(() => marked.parse(file?.content ?? '') as string);
   const [highlighted, setHighlighted] = useState(() => highlightSource(file?.content ?? ''));
-  const lineCount = ((file?.content ?? '').split('\n').length);
-  const [lineNums, setLineNums] = useState(() => lineCount);
   const htmlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lineCount, setLineCount] = useState(() => (file?.content ?? '').split('\n').length);
 
   const [cursorPos, setCursorPos] = useState(0);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -55,7 +54,6 @@ export default function Editor() {
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const [popupCoords, setPopupCoords] = useState({ top: 0, left: 0 });
 
-  // Pre-built hashtag index across all files — only recomputed when files change
   const allHashtags = useMemo(() => {
     const set = new Set<string>();
     for (const f of files) {
@@ -71,33 +69,35 @@ export default function Editor() {
     ta.value = file.content;
     ta.scrollTop = 0;
     if (backdropClipRef.current) backdropClipRef.current.scrollTop = 0;
+    if (gutterRef.current) gutterRef.current.scrollTop = 0;
     setHighlighted(highlightSource(file.content));
     setHtml(marked.parse(file.content) as string);
-    setLineNums(file.content.split('\n').length);
+    setLineCount(file.content.split('\n').length);
     setShowAutocomplete(false);
     const pos = ta.selectionStart;
     setCursorPos(pos);
     checkAutocomplete(ta, pos, file.content);
   }, [fileId]);
 
-  // rAF loop — only syncs scrollTop, skips if already in sync
+  // rAF loop — syncs scrollTop and scrollLeft
   useEffect(() => {
-    const ta = textareaRef.current;
-    const clip = backdropClipRef.current;
-    if (ta && clip) {
-      const sw = ta.offsetWidth - ta.clientWidth;
-      const bd = clip.firstElementChild as HTMLElement | null;
-      if (bd) bd.style.paddingRight = `calc(24px + ${sw}px)`;
-    }
     let rafId: number;
-    let lastScroll = -1;
+    let lastScrollTop = -1;
+    let lastScrollLeft = -1;
     const loop = () => {
       const ta = textareaRef.current;
       const clip = backdropClipRef.current;
-      const ln = lineNumsRef.current;
-      if (ta && clip && ta.scrollTop !== lastScroll) {
-        clip.scrollTop = lastScroll = ta.scrollTop;
-        if (ln) ln.scrollTop = lastScroll;
+      const gutter = gutterRef.current;
+      if (ta) {
+        if (ta.scrollTop !== lastScrollTop) {
+          lastScrollTop = ta.scrollTop;
+          if (clip) clip.scrollTop = lastScrollTop;
+          if (gutter) gutter.scrollTop = lastScrollTop;
+        }
+        if (ta.scrollLeft !== lastScrollLeft) {
+          lastScrollLeft = ta.scrollLeft;
+          if (clip) clip.scrollLeft = lastScrollLeft;
+        }
       }
       rafId = requestAnimationFrame(loop);
     };
@@ -113,7 +113,6 @@ export default function Editor() {
     const match = textBeforeCursor.match(/(^|\s)(#[a-zA-Z0-9_-]*)$/);
     if (match) {
       const activePrefix = match[2];
-      // Use pre-built index; also include current file's live text
       const liveSet = new Set(allHashtags);
       for (const m of text.matchAll(HASHTAG_RE)) liveSet.add(m[2]);
       const suggestions = Array.from(liveSet).filter(
@@ -141,8 +140,7 @@ export default function Editor() {
     const val = e.target.value;
     updateContent(val);
     setHighlighted(highlightSource(val));
-    setLineNums(val.split('\n').length);
-    // Debounce preview render — not needed for typing feel
+    setLineCount(val.split('\n').length);
     if (htmlTimerRef.current) clearTimeout(htmlTimerRef.current);
     htmlTimerRef.current = setTimeout(() => setHtml(marked.parse(val) as string), 150);
     const pos = e.target.selectionStart;
@@ -162,7 +160,6 @@ export default function Editor() {
   const popupRef = useRef<HTMLUListElement>(null);
   const caretHeightRef = useRef(20);
 
-  // After popup renders, flip above caret if it overflows viewport bottom
   useEffect(() => {
     const el = popupRef.current;
     if (!el || !showAutocomplete) return;
@@ -222,22 +219,21 @@ export default function Editor() {
     if (view === 'editor') textareaRef.current?.focus();
   }, [view, fileId]);
 
+  const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1), [lineCount]);
+
   return (
     <div className="flex flex-1 overflow-hidden min-h-0">
       {showEditor && (
         <div className={`editor-pane ${view === 'split' ? 'editor-pane--split' : 'editor-pane--full'}`}>
-          {/* Line number gutter */}
-          <div ref={lineNumsRef} className="editor-line-numbers" aria-hidden="true">
-            {Array.from({ length: lineNums }, (_, i) => (
-              <div key={i + 1}>{i + 1}</div>
-            ))}
+          <div ref={gutterRef} className="editor-gutter" aria-hidden="true">
+            <div className="editor-gutter-inner">
+              {lineNumbers.map(n => (
+                <div key={n} className="editor-gutter-line">{n}</div>
+              ))}
+            </div>
           </div>
-          {/* Backdrop: clip scrolls in sync with textarea via rAF */}
           <div ref={backdropClipRef} className="editor-backdrop-clip" aria-hidden="true">
-            <div
-              className="editor-backdrop"
-              dangerouslySetInnerHTML={{ __html: highlighted }}
-            />
+            <div className="editor-backdrop" dangerouslySetInnerHTML={{ __html: highlighted }} />
           </div>
           <textarea
             ref={textareaRef}
@@ -258,14 +254,7 @@ export default function Editor() {
             <ul
               ref={popupRef}
               className="fixed bg-[#1a1710] border border-[rgba(237,236,228,0.15)] shadow-2xl rounded-md z-50 py-1"
-              style={{
-                top: popupCoords.top,
-                left: popupCoords.left,
-                maxHeight: '200px',
-                overflowY: 'auto',
-                minWidth: '160px',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-              }}
+              style={{ top: popupCoords.top, left: popupCoords.left, maxHeight: '200px', overflowY: 'auto', minWidth: '160px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
             >
               {autocompleteOptions.map((opt, i) => (
                 <li
@@ -277,10 +266,7 @@ export default function Editor() {
                     if (match) {
                       const prefixLength = match[2].length;
                       const start = cursorPos - prefixLength;
-                      const before = text.slice(0, start);
-                      const after = text.slice(cursorPos);
-                      const newVal = before + opt + after;
-                      
+                      const newVal = text.slice(0, start) + opt + text.slice(cursorPos);
                       updateContent(newVal);
                       setHighlighted(highlightSource(newVal));
                       setHtml(marked.parse(newVal) as string);

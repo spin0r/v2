@@ -6,6 +6,8 @@ import { getCaretCoordinates } from './getCaretCoordinates';
 
 marked.setOptions({ breaks: true, gfm: true } as object);
 
+const LINE_H = 24; // must match line-height in CSS
+
 function highlightSource(raw: string): string {
   const esc = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   let out = esc.replace(
@@ -46,7 +48,10 @@ export default function Editor() {
   const [html, setHtml] = useState(() => marked.parse(file?.content ?? '') as string);
   const [highlighted, setHighlighted] = useState(() => highlightSource(file?.content ?? ''));
   const htmlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [lineCount, setLineCount] = useState(() => (file?.content ?? '').split('\n').length);
+  const [gutterState, setGutterState] = useState(() => {
+    const lines = (file?.content ?? '').split('\n');
+    return { rowHeights: lines.map(() => 1), totalRows: lines.length };
+  });
 
   const [cursorPos, setCursorPos] = useState(0);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -62,6 +67,40 @@ export default function Editor() {
     return set;
   }, [files]);
 
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const measureRowHeights = useCallback((text: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const contentWidth = ta.clientWidth - 48;
+    if (contentWidth <= 0) return;
+
+    if (!canvasRef.current) canvasRef.current = document.createElement('canvas');
+    const ctx = canvasRef.current.getContext('2d')!;
+    const computed = window.getComputedStyle(ta);
+    ctx.font = `${computed.fontSize} ${computed.fontFamily}`;
+
+    const lines = text.split('\n');
+    const rowHeights = lines.map(line =>
+      line ? Math.ceil(ctx.measureText(line).width / contentWidth) || 1 : 1
+    );
+
+    // Use actual scrollHeight to get true total visual rows (accounts for word-boundary wrapping)
+    const trueTotal = Math.round((ta.scrollHeight - 48) / LINE_H);
+    const canvasTotal = rowHeights.reduce((a, b) => a + b, 0);
+    const diff = trueTotal - canvasTotal;
+
+    // Distribute extra rows to longest lines (most likely to have been undercounted)
+    if (diff > 0) {
+      const widths = lines.map(line => ctx.measureText(line).width);
+      const order = widths.map((_, i) => i).sort((a, b) => widths[b] - widths[a]);
+      for (let i = 0; i < diff && i < order.length; i++) rowHeights[order[i]]++;
+    }
+
+    const totalRows = rowHeights.reduce((a, b) => a + b, 0);
+    setGutterState({ rowHeights, totalRows });
+  }, []);
+
   const fileId = file?.id;
   useEffect(() => {
     const ta = textareaRef.current;
@@ -72,38 +111,43 @@ export default function Editor() {
     if (gutterRef.current) gutterRef.current.scrollTop = 0;
     setHighlighted(highlightSource(file.content));
     setHtml(marked.parse(file.content) as string);
-    setLineCount(file.content.split('\n').length);
     setShowAutocomplete(false);
     const pos = ta.selectionStart;
     setCursorPos(pos);
     checkAutocomplete(ta, pos, file.content);
+    // measure after paint so clientWidth is valid
+    requestAnimationFrame(() => measureRowHeights(file.content));
   }, [fileId]);
 
-  // rAF loop — syncs scrollTop and scrollLeft
+  // rAF loop — syncs scrollTop only (no horizontal scroll needed with word-wrap)
   useEffect(() => {
     let rafId: number;
     let lastScrollTop = -1;
-    let lastScrollLeft = -1;
     const loop = () => {
       const ta = textareaRef.current;
       const clip = backdropClipRef.current;
       const gutter = gutterRef.current;
-      if (ta) {
-        if (ta.scrollTop !== lastScrollTop) {
-          lastScrollTop = ta.scrollTop;
-          if (clip) clip.scrollTop = lastScrollTop;
-          if (gutter) gutter.scrollTop = lastScrollTop;
-        }
-        if (ta.scrollLeft !== lastScrollLeft) {
-          lastScrollLeft = ta.scrollLeft;
-          if (clip) clip.scrollLeft = lastScrollLeft;
-        }
+      if (ta && ta.scrollTop !== lastScrollTop) {
+        lastScrollTop = ta.scrollTop;
+        if (clip) clip.scrollTop = lastScrollTop;
+        if (gutter) gutter.scrollTop = lastScrollTop;
       }
       rafId = requestAnimationFrame(loop);
     };
     rafId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafId);
   }, []);
+
+  // Remeasure on resize (e.g. split-pane drag, window resize)
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const ro = new ResizeObserver(() => {
+      if (ta.value) measureRowHeights(ta.value);
+    });
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, [measureRowHeights]);
 
   const showEditor = view === 'split' || view === 'editor';
   const showPreview = view === 'split' || view === 'preview';
@@ -140,13 +184,13 @@ export default function Editor() {
     const val = e.target.value;
     updateContent(val);
     setHighlighted(highlightSource(val));
-    setLineCount(val.split('\n').length);
+    measureRowHeights(val);
     if (htmlTimerRef.current) clearTimeout(htmlTimerRef.current);
     htmlTimerRef.current = setTimeout(() => setHtml(marked.parse(val) as string), 150);
     const pos = e.target.selectionStart;
     setCursorPos(pos);
     checkAutocomplete(e.target, pos, val);
-  }, [updateContent, checkAutocomplete]);
+  }, [updateContent, checkAutocomplete, measureRowHeights]);
 
   const handleCursorMove = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
     const ta = e.currentTarget;
@@ -219,7 +263,16 @@ export default function Editor() {
     if (view === 'editor') textareaRef.current?.focus();
   }, [view, fileId]);
 
-  const lineNumbers = useMemo(() => Array.from({ length: lineCount }, (_, i) => i + 1), [lineCount]);
+  const lineNumbers = useMemo(() => {
+    const { rowHeights, totalRows } = gutterState;
+    const nums: number[] = [];
+    let visual = 1;
+    rowHeights.forEach(rows => {
+      for (let r = 0; r < rows; r++) nums.push(visual++);
+    });
+    if (nums.length === 0) return Array.from({ length: totalRows }, (_, i) => i + 1);
+    return nums;
+  }, [gutterState]);
 
   return (
     <div className="flex flex-1 overflow-hidden min-h-0">
@@ -227,8 +280,10 @@ export default function Editor() {
         <div className={`editor-pane ${view === 'split' ? 'editor-pane--split' : 'editor-pane--full'}`}>
           <div ref={gutterRef} className="editor-gutter" aria-hidden="true">
             <div className="editor-gutter-inner">
-              {lineNumbers.map(n => (
-                <div key={n} className="editor-gutter-line">{n}</div>
+              {lineNumbers.map((n, i) => (
+                <div key={i} className="editor-gutter-line">
+                  {n}
+                </div>
               ))}
             </div>
           </div>
@@ -245,9 +300,13 @@ export default function Editor() {
             onKeyUp={handleCursorMove}
             onScroll={() => {
               const ta = textareaRef.current;
-              if (ta && showAutocomplete) checkAutocomplete(ta, cursorPos, ta.value);
+              if (!ta) return;
+              if (backdropClipRef.current) backdropClipRef.current.scrollTop = ta.scrollTop;
+              if (gutterRef.current) gutterRef.current.scrollTop = ta.scrollTop;
+              if (showAutocomplete) checkAutocomplete(ta, cursorPos, ta.value);
             }}
             spellCheck={false}
+            wrap="soft"
             placeholder="Start writing…"
           />
           {showAutocomplete && (

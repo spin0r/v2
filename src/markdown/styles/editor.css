@@ -1,0 +1,140 @@
+.editor-pane {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  overflow: hidden;
+}
+.editor-pane--split {
+  width: 50%;
+  border-right: 1px solid rgba(237, 236, 228, 0.08);
+}
+.editor-pane--full {
+  width: 100%;
+}
+
+/* ── Gutter ── */
+.editor-gutter {
+  flex-shrink: 0;
+  width: 36px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  user-select: none;
+  background: rgba(20, 18, 11, 0.6);
+  border-right: 1px solid rgba(237, 236, 228, 0.06);
+  z-index: 2;
+}
+.editor-gutter::-webkit-scrollbar { display: none; }
+
+.editor-gutter-inner {
+  padding-top: 24px;
+  padding-bottom: 24px;
+}
+
+.editor-gutter-line {
+  box-sizing: border-box;
+  width: 100%;
+  height: 24px;
+  padding-right: 8px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 24px;
+  color: rgba(237, 236, 236, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.editor-gutter-line:hover { color: rgba(212, 160, 74, 0.55); }
+
+/* ── Highlight backdrop ── */
+.editor-backdrop-clip {
+  position: absolute;
+  inset: 0;
+  left: 36px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.editor-backdrop {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 24px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 24px;
+  color: rgba(237, 236, 236, 0.78);
+}
+
+/* ── Textarea ── */
+.editor-textarea {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  resize: none;
+  outline: none;
+  padding: 24px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 24px;
+  color: transparent;
+  caret-color: #d4a04a;
+  cursor: text;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  border: none;
+  -webkit-text-fill-color: transparent;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.editor-textarea::-webkit-scrollbar { display: none; }
+.editor-textarea::placeholder {
+  color: rgba(237, 236, 236, 0.2);
+  -webkit-text-fill-color: rgba(237, 236, 236, 0.2);
+}
+.editor-textarea::selection {
+  background: rgba(192, 133, 50, 0.35);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.editor-textarea::-moz-selection {
+  background: rgba(192, 133, 50, 0.35);
+  color: transparent;
+}
+
+/* ── Syntax highlight tokens ── */
+.hl-link { color: #6daedb; }
+.hl-link .hl-url {
+  color: rgba(109, 174, 219, 0.65);
+  text-decoration: underline;
+  text-decoration-color: rgba(109, 174, 219, 0.25);
+  text-underline-offset: 2px;
+}
+.hl-img { color: #a78bfa; }
+.hl-img .hl-url {
+  color: rgba(167, 139, 250, 0.65);
+  text-decoration: underline;
+  text-decoration-color: rgba(167, 139, 250, 0.25);
+  text-underline-offset: 2px;
+}
+.hl-bare-url,
+.hl-html-url {
+  color: #5bbea6;
+  text-decoration: underline;
+  text-decoration-color: rgba(91, 190, 166, 0.3);
+  text-underline-offset: 2px;
+}
+.hl-hashtag {
+  color: #d4a04a;
+  background: rgba(212, 160, 74, 0.08);
+  border-radius: 3px;
+}

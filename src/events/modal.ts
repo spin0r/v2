@@ -73,16 +73,21 @@ export function bindModalEvents(appEl: HTMLElement): void {
       const d = state.threadData;
       if (!d) return;
       let postTitle = `Post #${gidx + 1}`;
+      let postId: string | undefined;
       let cur = 0;
       outer: for (const page of d.pages) {
         for (const p of page.posts) {
           if (cur === gidx) {
             postTitle = p.title || postTitle;
+            postId = p.postId;
             break outer;
           }
           cur++;
         }
       }
+      const postUrl = postId && d.url
+        ? `${d.url.replace(/\/$/, "")}?p=${postId}&viewfull=1#post${postId}`
+        : d.url;
 
       state.fetchingThreadPosts.set(gidx, { phase: "extracting", extracted: 0, total: 0 });
       render();
@@ -107,13 +112,13 @@ export function bindModalEvents(appEl: HTMLElement): void {
           },
         );
         state.fetchingThreadPosts.delete(gidx);
-        const result = { ...data, title: data.title || postTitle, sourceUrl: data.sourceUrl || d.url };
+        const result = { ...data, title: data.title || postTitle, sourceUrl: data.sourceUrl || postUrl };
         state.completedThreadPosts.set(gidx, result);
         render();
         toast(`✓ ${postTitle?.slice(0, 40)} — ${data.extracted || 0}/${data.total || 0}`, "success");
       } catch (err) {
         state.fetchingThreadPosts.delete(gidx);
-        state.completedThreadPosts.set(gidx, { ok: false, error: (err as Error).message, title: postTitle, sourceUrl: d.url });
+        state.completedThreadPosts.set(gidx, { ok: false, error: (err as Error).message, title: postTitle, sourceUrl: postUrl });
         render();
         toast(`✗ ${postTitle?.slice(0, 40)} — failed`, "error");
       }

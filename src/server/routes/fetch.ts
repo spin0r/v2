@@ -269,12 +269,12 @@ export async function handleThreadExtract(
     });
 
   const threadData = threadCache.get(threadId) as {
-    pages: { posts: { title?: string; links: string[] }[] }[];
+    pages: { posts: { title?: string; links: string[]; postId?: string }[] }[];
     url: string;
     title?: string;
     searchQuery: string | null;
   };
-  let post: { title?: string; links: string[] } | null = null;
+  let post: { title?: string; links: string[]; postId?: string } | null = null;
   let cur = 0;
   outer: for (const page of threadData.pages) {
     for (const p of page.posts) {
@@ -288,6 +288,9 @@ export async function handleThreadExtract(
   if (!post) return sendJSON(res, 404, { error: 'Post not found in thread.' });
 
   const title = mergeTitle(threadData.title, post.title) || post.title || `Post #${gidx + 1}`;
+  const sourceUrl = post.postId && threadData.url
+    ? `${threadData.url.replace(/\/$/, '')}?p=${post.postId}&viewfull=1#post${post.postId}`
+    : threadData.url;
   if (stream) {
     startSSE(res);
     sendSSE(res, 'phase', { phase: 'extracting', total: post.links.length });
@@ -300,7 +303,7 @@ export async function handleThreadExtract(
     const result = await extractAndUpload(
       post.links,
       title,
-      threadData.url,
+      sourceUrl,
       threadData.searchQuery,
       onProgress,
     );

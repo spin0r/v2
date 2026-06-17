@@ -49,7 +49,9 @@ export default function Editor() {
   const [highlighted, setHighlighted] = useState(() => highlightSource(file?.content ?? ''));
   const htmlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gutterState, setGutterState] = useState(() => {
-    const lines = (file?.content ?? '').split('\n');
+    const c = file?.content ?? '';
+    if (c === '') return { rowHeights: [], totalRows: 0 };
+    const lines = c.split('\n');
     return { rowHeights: lines.map(() => 1), totalRows: lines.length };
   });
 
@@ -72,6 +74,13 @@ export default function Editor() {
   const measureRowHeights = useCallback((text: string) => {
     const ta = textareaRef.current;
     if (!ta) return;
+
+    // Empty content → 0 gutter lines
+    if (text === '') {
+      setGutterState({ rowHeights: [], totalRows: 0 });
+      return;
+    }
+
     const contentWidth = ta.clientWidth - 48;
     if (contentWidth <= 0) return;
 
@@ -85,16 +94,22 @@ export default function Editor() {
       line ? Math.ceil(ctx.measureText(line).width / contentWidth) || 1 : 1
     );
 
-    // Use actual scrollHeight to get true total visual rows (accounts for word-boundary wrapping)
-    const trueTotal = Math.round((ta.scrollHeight - 48) / LINE_H);
+    // Only use scrollHeight correction when content actually overflows the
+    // visible area.  When the textarea is flex-stretched (scrollHeight ==
+    // clientHeight), the scroll-based total is just the pane height, not the
+    // content height, which inflates the gutter count.
     const canvasTotal = rowHeights.reduce((a, b) => a + b, 0);
-    const diff = trueTotal - canvasTotal;
 
-    // Distribute extra rows to longest lines (most likely to have been undercounted)
-    if (diff > 0) {
-      const widths = lines.map(line => ctx.measureText(line).width);
-      const order = widths.map((_, i) => i).sort((a, b) => widths[b] - widths[a]);
-      for (let i = 0; i < diff && i < order.length; i++) rowHeights[order[i]]++;
+    if (ta.scrollHeight > ta.clientHeight) {
+      const trueTotal = Math.round((ta.scrollHeight - 48) / LINE_H);
+      const diff = trueTotal - canvasTotal;
+
+      // Distribute extra rows to longest lines (most likely to have been undercounted)
+      if (diff > 0) {
+        const widths = lines.map(line => ctx.measureText(line).width);
+        const order = widths.map((_, i) => i).sort((a, b) => widths[b] - widths[a]);
+        for (let i = 0; i < diff && i < order.length; i++) rowHeights[order[i]]++;
+      }
     }
 
     const totalRows = rowHeights.reduce((a, b) => a + b, 0);
@@ -264,13 +279,13 @@ export default function Editor() {
   }, [view, fileId]);
 
   const lineNumbers = useMemo(() => {
-    const { rowHeights, totalRows } = gutterState;
+    const { rowHeights } = gutterState;
+    if (rowHeights.length === 0) return [];
     const nums: number[] = [];
     let visual = 1;
     rowHeights.forEach(rows => {
       for (let r = 0; r < rows; r++) nums.push(visual++);
     });
-    if (nums.length === 0) return Array.from({ length: totalRows }, (_, i) => i + 1);
     return nums;
   }, [gutterState]);
 

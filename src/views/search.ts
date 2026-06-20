@@ -446,24 +446,54 @@ async function doSearch(query: string, page = 1, isNewSearch = true): Promise<vo
   }
 
   if (isThreadUrl(query.trim())) {
+    const threadUrl = query.trim();
     state.query = query;
     state.results = [];
-    state.directFetchLoading = true;
     state.directFetchResult = null;
-    state.threadData = null;
-    state.threadExtractedPosts = {};
     state.fetchingCards.clear();
     state.completedCards.clear();
     state.scrapedCards.clear();
     state.fetchingThreadPosts.clear();
+
+    // Save current thread's extracted posts to cache before switching
+    if (state.threadSearchUrl && state.completedThreadPosts.size > 0) {
+      state.threadPostsCache.set(state.threadSearchUrl, new Map(state.completedThreadPosts));
+    }
+
+    // Check cache for this thread URL
+    const cached = state.threadCache.get(threadUrl);
+    if (cached) {
+      state.threadData = cached.threadData;
+      state.threadId = cached.threadId;
+      state.threadSearchUrl = threadUrl;
+      state.threadPage = 0;
+      // Restore extracted posts from cache if available
+      const cachedPosts = state.threadPostsCache.get(threadUrl);
+      state.completedThreadPosts = cachedPosts ? new Map(cachedPosts) : new Map();
+      state.directFetchLoading = false;
+      render();
+      toast("Loaded thread from cache", "success");
+      return;
+    }
+
+    state.threadData = null;
+    state.threadExtractedPosts = {};
     state.completedThreadPosts.clear();
+    state.directFetchLoading = true;
+    state.threadPage = 0;
     render();
     try {
-      const data = await apiDirectFetch(query.trim());
+      const data = await apiDirectFetch(threadUrl);
       if (data.ok && data.threadData) {
         state.threadData = data.threadData;
         state.threadId = data.threadId;
+        state.threadSearchUrl = threadUrl;
         state.threadPage = 0;
+        // Cache the thread data
+        state.threadCache.set(threadUrl, {
+          threadData: data.threadData,
+          threadId: data.threadId!,
+        });
       } else {
         state.directFetchResult = { ok: false, error: "Failed to fetch thread" };
       }
@@ -491,7 +521,12 @@ async function doSearch(query: string, page = 1, isNewSearch = true): Promise<vo
   state.completedCards.clear();
   state.scrapedCards.clear();
   state.fetchingThreadPosts.clear();
+  // Save current thread's extracted posts to cache before clearing
+  if (state.threadSearchUrl && state.completedThreadPosts.size > 0) {
+    state.threadPostsCache.set(state.threadSearchUrl, new Map(state.completedThreadPosts));
+  }
   state.completedThreadPosts.clear();
+  state.threadData = null;
   state.searchStartTime = Date.now();
   state.searchElapsed = "0.0";
   render();

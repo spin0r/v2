@@ -26,6 +26,7 @@ export interface AppState {
   directFetchResult: FetchResult | null;
   threadData: import("./api.ts").ThreadData | null;
   threadId?: string;
+  threadSearchUrl?: string;
   threadPage: number;
   threadExtractingPost: number | null;
   threadExtractedPosts: Record<string, unknown>;
@@ -54,6 +55,9 @@ export interface AppState {
   allResultsLoaded: boolean;
   allResultsLoading: boolean;
   allResultsProgress: string;
+  // Thread search cache: maps thread URL → cached data
+  threadCache: Map<string, { threadData: import("./api.ts").ThreadData; threadId: string }>;
+  threadPostsCache: Map<string, Map<number, import("./api.ts").FetchResult>>;
 }
 
 export const state: AppState = {
@@ -82,6 +86,7 @@ export const state: AppState = {
   threadPage: 0,
   threadExtractingPost: null,
   threadExtractedPosts: {},
+  threadSearchUrl: undefined,
   historyLoading: false,
   historyResults: [],
   historyPage: 1,
@@ -107,6 +112,8 @@ export const state: AppState = {
   allResultsLoaded: false,
   allResultsLoading: false,
   allResultsProgress: "",
+  threadCache: new Map(),
+  threadPostsCache: new Map(),
 };
 
 let appEl: HTMLElement | null = null;
@@ -119,10 +126,27 @@ export function copyAllCmdBlocks(): void {
     const text = getCmdText(result);
     if (text) allTexts.push(text);
   }
-  for (const [, result] of state.completedThreadPosts) {
-    const text = getCmdText(result);
-    if (text) allTexts.push(text);
+
+  // In thread view, only copy commands from the current page
+  if (state.threadData) {
+    const d = state.threadData;
+    const currentPageStart = d.pages
+      .slice(0, state.threadPage)
+      .reduce((s, p) => s + p.posts.length, 0);
+    const currentPageEnd = currentPageStart + (d.pages[state.threadPage]?.posts.length || 0);
+    for (const [gidx, result] of state.completedThreadPosts) {
+      if (gidx >= currentPageStart && gidx < currentPageEnd) {
+        const text = getCmdText(result);
+        if (text) allTexts.push(text);
+      }
+    }
+  } else {
+    for (const [, result] of state.completedThreadPosts) {
+      const text = getCmdText(result);
+      if (text) allTexts.push(text);
+    }
   }
+
   if (allTexts.length === 0) {
     toast("No commands to copy", "error");
     return;

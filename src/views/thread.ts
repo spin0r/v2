@@ -84,10 +84,10 @@ function renderThreadView(): string {
       </div>
       <div class="status-actions">
         ${
-          [...state.completedThreadPosts.values()].some(
-            (c) => c.ok && (c.sendCommand || c.dlCommand),
+          [...state.completedThreadPosts.entries()].some(
+            ([gidx, c]) => gidx >= globalStart && gidx < globalStart + pageData.posts.length && c.ok && (c.sendCommand || c.dlCommand),
           )
-            ? `<button class="export-btn" id="copy-all-btn" title="Copy all extracted commands">
+            ? `<button class="export-btn" id="copy-all-btn" title="Copy extracted commands from this page">
           ${svgIcon("copy_all")} Copy All
         </button>`
             : ""

@@ -401,3 +401,28 @@ export async function apiReExtract(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+export async function apiFgardenList(): Promise<{ ok: boolean; items: Array<{ id: string; name: string; type: string; path: string }>; gardenId: string }> {
+  const res = await fetch(`${API}/fgarden/list`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function apiFgardenUploadUrl(url: string, dir?: string): Promise<{ ok: boolean; url?: string; item?: { name: string; path: string }; error?: string }> {
+  const res = await fetch(`${API}/fgarden/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, dir }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function apiFgardenUploadFile(file: File, dir?: string): Promise<{ ok: boolean; url?: string; item?: { name: string; path: string }; error?: string }> {
+  const fd = new FormData();
+  fd.append('file', file);
+  if (dir) fd.append('dir', dir);
+  const res = await fetch(`${API}/fgarden/upload`, { method: 'POST', body: fd });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

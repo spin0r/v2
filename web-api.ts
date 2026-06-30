@@ -7,12 +7,19 @@ import { handleRssFeed, handleRssXml } from "./src/server/routes/rss.js";
 import { handleImxExtract, handleImxUpload, handleImxUploadSingle } from "./src/server/routes/imx.js";
 import { handleAiRename, handleConfig, handleHealth, handleStaticRoutes } from "./src/server/routes/misc.js";
 import { handleCreate, handleEdit, handleRaw, handleGetSnippet, handleDelete } from "./src/server/routes/plain.js";
+import { handleFgardenList, handleFgardenUpload } from "./src/server/routes/fgarden.js";
 
 const PORT = parseInt(process.env.PORT || process.env.WEB_API_PORT || "3001");
 
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
     res.writeHead(204, { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE" });
+    return res.end();
+  }
+
+  const host = req.headers.host || "";
+  if (host.startsWith("markdown.") && !req.url?.startsWith("/markdown") && !req.url?.startsWith("/api")) {
+    res.writeHead(302, { Location: "/markdown" });
     return res.end();
   }
 
@@ -41,6 +48,8 @@ const server = http.createServer(async (req, res) => {
       const [, , , , id, editKey] = pathname.split("/");
       return await handleDelete(req, res, id, editKey);
     }
+    if (pathname === "/api/fgarden/list") return await handleFgardenList(req, res);
+    if (pathname === "/api/fgarden/upload" && req.method === "POST") return await handleFgardenUpload(req, res);
     if (pathname === "/api/rss") return await handleRssFeed(params, res);
     if (pathname === "/api/rss.xml") return await handleRssXml(params, res);
     if (pathname === "/api/history") return handleHistory(params, res);

@@ -23,7 +23,7 @@ const server = http.createServer(async (req, res) => {
 
   const host = req.headers.host || "";
   if (host.startsWith("mark.") && !req.url?.startsWith("/api")) {
-    const rootDir = path.join(__dirname, "..");
+    const rootDir = __dirname;
     const markdownHtml = fs.existsSync(path.join(rootDir, "dist", "markdown.html"))
       ? path.join(rootDir, "dist", "markdown.html")
       : path.join(rootDir, "markdown.html");

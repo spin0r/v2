@@ -18,7 +18,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   const host = req.headers.host || "";
-  if (host.startsWith("markdown.") && !req.url?.startsWith("/markdown") && !req.url?.startsWith("/api")) {
+  if (host.startsWith("mark.") && !req.url?.startsWith("/markdown") && !req.url?.startsWith("/api")) {
     res.writeHead(302, { Location: "/markdown" });
     return res.end();
   }

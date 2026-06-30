@@ -1,5 +1,9 @@
 import "dotenv/config";
 import http from "http";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { parseURL, sendJSON, handleHistory } from "./src/server/utils.js";
 import { handleVgSearch, handleApsSearch } from "./src/server/routes/search.js";
 import { handleVgScrape, handleVgFetch, handleApsFetch, handleDirectFetch, handleThreadExtract, handleReExtract } from "./src/server/routes/fetch.js";
@@ -18,9 +22,16 @@ const server = http.createServer(async (req, res) => {
   }
 
   const host = req.headers.host || "";
-  if (host.startsWith("mark.") && !req.url?.startsWith("/markdown") && !req.url?.startsWith("/api")) {
-    res.writeHead(302, { Location: "/markdown" });
-    return res.end();
+  if (host.startsWith("mark.") && !req.url?.startsWith("/api")) {
+    const rootDir = path.join(__dirname, "..");
+    const markdownHtml = fs.existsSync(path.join(rootDir, "dist", "markdown.html"))
+      ? path.join(rootDir, "dist", "markdown.html")
+      : path.join(rootDir, "markdown.html");
+    if (fs.existsSync(markdownHtml)) {
+      res.writeHead(200, { "Content-Type": "text/html" });
+      fs.createReadStream(markdownHtml).pipe(res);
+      return;
+    }
   }
 
   const { pathname, params } = parseURL(req.url!);

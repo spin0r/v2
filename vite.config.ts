@@ -18,6 +18,7 @@ export default defineConfig({
           if (req.url === '/markdown' || req.url === '/markdown/') req.url = '/markdown.html';
           if (req.url === '/text' || req.url === '/text/') req.url = '/text.html';
           if (req.url === '/imx' || req.url === '/imx/') req.url = '/imx.html';
+          if (req.url === '/fgarden' || req.url === '/fgarden/') req.url = '/fgarden.html';
           if (req.url?.startsWith('/plain') && !req.url.startsWith('/plain/api') && !req.url.startsWith('/plain/raw')) req.url = '/plain.html';
           next();
         });
@@ -49,6 +50,7 @@ export default defineConfig({
         text: path.resolve(__dirname, 'text.html'),
         plain: path.resolve(__dirname, 'plain.html'),
         imx: path.resolve(__dirname, 'imx.html'),
+        fgarden: path.resolve(__dirname, 'fgarden.html'),
       },
       output: {
         manualChunks: (id) => {

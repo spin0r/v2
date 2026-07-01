@@ -71,7 +71,8 @@ export class ImageHostExtractor {
   async extractImagebam(url: string): Promise<string | null> {
     try {
       this.cookies["nsfw_inter"] = "1";
-      const html = await this._get(url, { headers: { Cookie: "nsfw_inter=1" } });
+      this.cookies["sfw_inter"] = "1";
+      const html = await this._get(url, { headers: { Cookie: "nsfw_inter=1; sfw_inter=1" } });
       const $ = this._load(html);
       const img = $("img.main-image").attr("src");
       if (img) return img;

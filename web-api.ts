@@ -22,9 +22,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   const host = req.headers.host || "";
-  if ((host.startsWith("mark.") || host.startsWith("text.")) && !req.url?.startsWith("/api") && !req.url?.startsWith("/assets") && !/\.(js|css|svg|png|ico|webp|jpg|woff2?)$/.test(req.url || "")) {
+  if (host.startsWith("text.") && !req.url?.startsWith("/api") && !req.url?.startsWith("/assets") && !/\.(js|css|svg|png|ico|webp|jpg|woff2?)$/.test(req.url || "")) {
     const rootDir = __dirname;
-    const page = host.startsWith("text.") ? "text.html" : "markdown.html";
+    const page = "text.html";
     const htmlFile = fs.existsSync(path.join(rootDir, "dist", page))
       ? path.join(rootDir, "dist", page)
       : path.join(rootDir, page);

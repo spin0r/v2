@@ -162,6 +162,7 @@ export async function extractPerformerName(
     );
     const result: string = response.data?.result?.trim() || '';
     if (!result || result === 'UNKNOWN') {
+      console.warn(`[Performer Extract] Empty result for "${title}"`);
       performerCache.set(title, null);
       return null;
     }
@@ -169,7 +170,9 @@ export async function extractPerformerName(
     performerCache.set(title, result);
     return result;
   } catch (e) {
-    console.warn(`[Performer Extract] Failed for "${title}": ${(e as Error).message}`);
+    const status = (e as { response?: { status?: number } }).response?.status;
+    const data = (e as { response?: { data?: unknown } }).response?.data;
+    console.warn(`[Performer Extract] Failed for "${title}": ${(e as Error).message}${status ? ` (HTTP ${status})` : ''}${data ? ` — ${JSON.stringify(data)}` : ''}`);
     performerCache.set(title, null);
     return null;
   }

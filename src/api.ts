@@ -100,18 +100,6 @@ export interface HistoryResponse {
   page: number;
 }
 
-export interface ImxResult {
-  ok: boolean;
-  total?: number;
-  extracted?: number;
-  uploaded?: number;
-  failed?: number;
-  error?: string;
-  pasteUrl?: string;
-  galleryUrl?: string;
-  previewUrls?: string[];
-}
-
 export interface RssEntry {
   title: string;
   link?: string;
@@ -298,81 +286,6 @@ export function apiThreadPostExtractStream(
       es.close();
       reject(new Error("Connection lost"));
     };
-  });
-}
-
-export async function apiImxExtract(text: string): Promise<ImxResult> {
-  const res = await fetch(`${API}/imx/extract`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-export async function apiImxUpload(url: string): Promise<ImxResult> {
-  const res = await fetch(`${API}/imx/upload`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-// Streaming version of apiImxUpload using SSE
-export function apiImxUploadStream(
-  url: string,
-  onProgress?: (event: { type: string; phase?: string; done?: number; total?: number; success?: number; fail?: number; galleryId?: string | null }) => void,
-  galleryName?: string,
-  signal?: AbortSignal,
-): Promise<ImxResult> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(new Error("Aborted"));
-    // We need to POST to get SSE, so we use fetch + ReadableStream
-    fetch(`${API}/imx/upload`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, stream: true, galleryName: galleryName || undefined }),
-      signal,
-    })
-      .then((res) => {
-        if (!res.ok) return reject(new Error(`HTTP ${res.status}`));
-        if (!res.body) return reject(new Error("No response body"));
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        function processLine(line: string) {
-          if (line.startsWith("event: ")) {
-            // Store event type for next data line
-            (processLine as any).__evt = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            const evt = (processLine as any).__evt || "";
-            try {
-              const d = JSON.parse(line.slice(6));
-              if (evt === "done") resolve(d);
-              else if (evt === "error") reject(new Error(d.error || "Stream error"));
-              else if (evt === "phase" && onProgress) onProgress({ type: "phase", phase: d.phase, total: d.total });
-              else if (evt === "progress" && onProgress) onProgress({ type: "progress", done: d.done, total: d.total, success: d.success, fail: d.fail, galleryId: d.galleryId });
-            } catch { /* ignore parse errors */ }
-          }
-        }
-
-        function pump(): Promise<void> {
-          return reader.read().then(({ done, value }) => {
-            if (done) return;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
-            for (const l of lines) processLine(l.trim());
-            return pump();
-          });
-        }
-        pump().catch(reject);
-      })
-      .catch(reject);
   });
 }
 

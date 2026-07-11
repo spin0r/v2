@@ -253,7 +253,7 @@ function renderResults(skipAnim = false): string {
         .join("");
 
       return `
-        <div class="imx-result fade-in">
+        <div class="fetch-result fade-in">
           <div class="result-info-grid">
             <div class="info-row"><span class="info-key">Title</span><span class="info-val">${d.title || ""}</span></div>
             <div class="info-row"><span class="info-key">Images</span><span class="info-val accent">${d.extracted}/${d.total}</span></div>
@@ -290,7 +290,7 @@ function renderResults(skipAnim = false): string {
         </div>`;
     } else {
       return `
-        <div class="imx-result fade-in">
+        <div class="fetch-result fade-in">
           <div class="error-msg">${d.error || "Extraction failed"}</div>
         </div>`;
     }

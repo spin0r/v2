@@ -142,14 +142,6 @@ export function formatPerformerHashtags(names: string): string {
   );
 }
 
-async function getPerformerPrompt(): Promise<string> {
-  const promptUrl = process.env.PERFORMER_PROMPT_URL;
-  if (!promptUrl)
-    throw new Error('PERFORMER_PROMPT_URL not configured in .env');
-  const resp = await axios.get(promptUrl, { timeout: 10000 });
-  return resp.data;
-}
-
 const performerCache = new Map<string, string | null>();
 
 export async function extractPerformerName(
@@ -161,80 +153,26 @@ export async function extractPerformerName(
   const cached = performerCache.get(title);
   if (cached !== undefined) return cached;
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.warn(
-      '[Performer Extract] OPENROUTER_API_KEY not configured, skipping',
-    );
-    return null;
-  }
-
-  let performerPrompt: string;
   try {
-    performerPrompt = await getPerformerPrompt();
-  } catch (e) {
-    console.warn(
-      `[Performer Extract] Failed to load prompt: ${(e as Error).message}`,
+    const base = process.env.FMT_BASE_URL || 'https://fmt.helvetican.xyz';
+    const response = await axios.post(
+      `${base}/api/extract-performer`,
+      { text: title },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 30000 },
     );
+    const result: string = response.data?.result?.trim() || '';
+    if (!result || result === 'UNKNOWN') {
+      performerCache.set(title, null);
+      return null;
+    }
+    console.log(`[Performer Extract] "${title}" → "${result}"`);
+    performerCache.set(title, result);
+    return result;
+  } catch (e) {
+    console.warn(`[Performer Extract] Failed for "${title}": ${(e as Error).message}`);
+    performerCache.set(title, null);
     return null;
   }
-
-  const FREE_MODELS = [
-    'google/gemini-2.5-flash-lite',
-    'google/gemini-2.0-flash-001',
-    'google/gemma-4-31b-it:free',
-    'meta-llama/llama-3.3-70b-instruct:free',
-  ];
-
-  for (const model of FREE_MODELS) {
-    try {
-      const response = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model,
-          messages: [
-            { role: 'system', content: performerPrompt },
-            { role: 'user', content: title },
-          ],
-          temperature: 0.0,
-          max_tokens: 100,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-          },
-          timeout: 15000,
-        },
-      );
-      const result =
-        response.data?.choices?.[0]?.message?.content?.trim() || '';
-      if (!result || result === 'UNKNOWN') {
-        performerCache.set(title, null);
-        return null;
-      }
-      console.log(`[Performer Extract] "${title}" → "${result}" (${model})`);
-      performerCache.set(title, result);
-      return result;
-    } catch (e) {
-      const code =
-        (
-          e as {
-            response?: {
-              data?: { error?: { code?: number } };
-              status?: number;
-            };
-          }
-        ).response?.data?.error?.code ||
-        (e as { response?: { status?: number } }).response?.status;
-      if (code === 429 || code === 503) continue;
-      break;
-    }
-  }
-
-  console.warn(`[Performer Extract] All models failed for: "${title}"`);
-  performerCache.set(title, null);
-  return null;
 }
 
 export async function extractAndUpload(

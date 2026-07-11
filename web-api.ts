@@ -8,7 +8,6 @@ import { parseURL, sendJSON, handleHistory } from "./src/server/utils.js";
 import { handleVgSearch, handleApsSearch } from "./src/server/routes/search.js";
 import { handleVgScrape, handleVgFetch, handleApsFetch, handleDirectFetch, handleThreadExtract, handleReExtract } from "./src/server/routes/fetch.js";
 import { handleRssFeed, handleRssXml } from "./src/server/routes/rss.js";
-import { handleImxExtract, handleImxUpload, handleImxUploadSingle } from "./src/server/routes/imx.js";
 import { handleAiRename, handleConfig, handleHealth, handleStaticRoutes } from "./src/server/routes/misc.js";
 import { handleCreate, handleEdit, handleRaw, handleGetSnippet, handleDelete } from "./src/server/routes/plain.js";
 import { handleFgardenList, handleFgardenUpload } from "./src/server/routes/fgarden.js";
@@ -31,9 +30,6 @@ const server = http.createServer(async (req, res) => {
     if (pathname === "/api/fetch/url") return await handleDirectFetch(params, res);
     if (pathname === "/api/fetch/thread-post") return await handleThreadExtract(params, res);
     if (pathname === "/api/re-extract" && req.method === "POST") return await handleReExtract(req, res);
-    if (pathname === "/api/imx/extract") return await handleImxExtract(req, res);
-    if (pathname === "/api/imx/upload") return await handleImxUpload(req, res);
-    if (pathname === "/api/imx/upload-single") return await handleImxUploadSingle(req, res);
     if (pathname === "/api/ai-rename" && req.method === "POST") return await handleAiRename(req, res);
     if (pathname === "/plain/api/create" && req.method === "POST") return await handleCreate(req, res);
     if (req.method === "PUT" && pathname.startsWith("/plain/api/edit/")) {

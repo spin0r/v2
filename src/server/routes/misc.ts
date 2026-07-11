@@ -17,8 +17,9 @@ export async function handleAiRename(req: IncomingMessage, res: ServerResponse):
   if (!text) return sendJSON(res, 400, { error: 'Missing "text" field' });
 
   try {
+    const base = process.env.FMT_BASE_URL || "https://fmt.helvetican.xyz";
     const response = await axios.post(
-      "https://fmt.helvetican.xyz/api/ai-rename",
+      `${base}/api/ai-rename`,
       { text },
       { headers: { "Content-Type": "application/json" }, timeout: 30000 },
     );
@@ -31,7 +32,7 @@ export async function handleAiRename(req: IncomingMessage, res: ServerResponse):
 }
 
 export function handleConfig(_params: URLSearchParams, res: ServerResponse): void {
-  sendJSON(res, 200, { openrouterKey: process.env.OPENROUTER_API_KEY || "", promptUrl: process.env.PROMPT_URL || "" });
+  sendJSON(res, 200, { fmtBaseUrl: process.env.FMT_BASE_URL || "" });
 }
 
 export function handleHealth(_params: URLSearchParams, res: ServerResponse): void {
@@ -62,8 +63,6 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
     ["/plain/", fs.existsSync(path.join(rootDir, "dist", "plain.html")) ? path.join(rootDir, "dist", "plain.html") : path.join(rootDir, "plain", "index.html")],
     ["/docs", path.join(rootDir, "docs", "home", "index.html")],
     ["/docs/", path.join(rootDir, "docs", "home", "index.html")],
-    ["/imx", fs.existsSync(path.join(rootDir, "dist", "imx.html")) ? path.join(rootDir, "dist", "imx.html") : path.join(rootDir, "imx.html")],
-    ["/imx/", fs.existsSync(path.join(rootDir, "dist", "imx.html")) ? path.join(rootDir, "dist", "imx.html") : path.join(rootDir, "imx.html")],
     ["/fgarden", fs.existsSync(path.join(rootDir, "dist", "fgarden.html")) ? path.join(rootDir, "dist", "fgarden.html") : path.join(rootDir, "fgarden.html")],
     ["/fgarden/", fs.existsSync(path.join(rootDir, "dist", "fgarden.html")) ? path.join(rootDir, "dist", "fgarden.html") : path.join(rootDir, "fgarden.html")],
   ];

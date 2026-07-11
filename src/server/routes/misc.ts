@@ -7,13 +7,6 @@ import { sendJSON, readBody } from "../utils.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-async function getAiPrompt(): Promise<string> {
-  const promptUrl = process.env.PROMPT_URL;
-  if (!promptUrl) throw new Error("PROMPT_URL not configured in .env");
-  const resp = await axios.get(promptUrl, { timeout: 10000 });
-  return resp.data;
-}
-
 export async function handleAiRename(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const body = await readBody(req);
   let parsed: { text?: string };
@@ -23,39 +16,18 @@ export async function handleAiRename(req: IncomingMessage, res: ServerResponse):
   const text = (parsed.text || "").trim();
   if (!text) return sendJSON(res, 400, { error: 'Missing "text" field' });
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return sendJSON(res, 500, { error: "OPENROUTER_API_KEY not configured" });
-
-  let systemPrompt: string;
-  try { systemPrompt = await getAiPrompt(); }
-  catch (e) { return sendJSON(res, 500, { error: `Failed to load AI prompt: ${(e as Error).message}` }); }
-
-  const FREE_MODELS = [
-    "google/gemini-2.5-flash-lite",
-    "google/gemini-2.0-flash-001",
-    "google/gemma-4-31b-it:free",
-    "meta-llama/llama-3.3-70b-instruct:free",
-  ];
-
-  let lastErr = "";
-  for (const model of FREE_MODELS) {
-    try {
-      const response = await axios.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        { model, messages: [{ role: "system", content: systemPrompt }, { role: "user", content: text }], temperature: 0.1, max_tokens: 2048 },
-        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, timeout: 30000 },
-      );
-      const result = response.data?.choices?.[0]?.message?.content?.trim() || "";
-      if (!result) continue;
-      return sendJSON(res, 200, { ok: true, result, model });
-    } catch (e) {
-      const code = (e as { response?: { data?: { error?: { code?: number } }; status?: number } }).response?.data?.error?.code || (e as { response?: { status?: number } }).response?.status;
-      lastErr = (e as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message || (e as Error).message;
-      if (code === 429 || code === 503) continue;
-      break;
-    }
+  try {
+    const response = await axios.post(
+      "https://fmt.helvetican.xyz/api/ai-rename",
+      { text },
+      { headers: { "Content-Type": "application/json" }, timeout: 30000 },
+    );
+    return sendJSON(res, 200, response.data);
+  } catch (e) {
+    const status = (e as { response?: { status?: number } }).response?.status || 500;
+    const errMsg = (e as { response?: { data?: { error?: string } } }).response?.data?.error || (e as Error).message;
+    return sendJSON(res, status, { error: errMsg });
   }
-  sendJSON(res, 500, { error: `AI error: ${lastErr}` });
 }
 
 export function handleConfig(_params: URLSearchParams, res: ServerResponse): void {
@@ -94,8 +66,6 @@ export function handleStaticRoutes(pathname: string, _req: IncomingMessage, res:
     ["/imx/", fs.existsSync(path.join(rootDir, "dist", "imx.html")) ? path.join(rootDir, "dist", "imx.html") : path.join(rootDir, "imx.html")],
     ["/fgarden", fs.existsSync(path.join(rootDir, "dist", "fgarden.html")) ? path.join(rootDir, "dist", "fgarden.html") : path.join(rootDir, "fgarden.html")],
     ["/fgarden/", fs.existsSync(path.join(rootDir, "dist", "fgarden.html")) ? path.join(rootDir, "dist", "fgarden.html") : path.join(rootDir, "fgarden.html")],
-    ["/text", fs.existsSync(path.join(rootDir, "dist", "text.html")) ? path.join(rootDir, "dist", "text.html") : path.join(rootDir, "text.html")],
-    ["/text/", fs.existsSync(path.join(rootDir, "dist", "text.html")) ? path.join(rootDir, "dist", "text.html") : path.join(rootDir, "text.html")],
   ];
   for (const [pat, file] of staticMap) {
     if (pathname === pat && fs.existsSync(file)) {

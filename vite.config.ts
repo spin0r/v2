@@ -15,7 +15,6 @@ export default defineConfig({
       name: 'html-rewrite',
       configureServer(server) {
         server.middlewares.use((req, _res, next) => {
-          if (req.url === '/text' || req.url === '/text/') req.url = '/text.html';
           if (req.url === '/imx' || req.url === '/imx/') req.url = '/imx.html';
           if (req.url === '/fgarden' || req.url === '/fgarden/') req.url = '/fgarden.html';
           if (req.url?.startsWith('/plain') && !req.url.startsWith('/plain/api') && !req.url.startsWith('/plain/raw')) req.url = '/plain.html';
@@ -45,7 +44,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
-        text: path.resolve(__dirname, 'text.html'),
         plain: path.resolve(__dirname, 'plain.html'),
         imx: path.resolve(__dirname, 'imx.html'),
         fgarden: path.resolve(__dirname, 'fgarden.html'),

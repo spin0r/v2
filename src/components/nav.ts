@@ -20,7 +20,6 @@ function renderNav(): string {
       <li><a class="animate-line ${state.view === "rss" ? "active" : ""}" id="nav-rss" style="cursor:pointer">RSS</a></li>
       <li><a class="animate-line" href="/plain" target="_blank" rel="noopener">Plain</a></li>
       <li><a class="animate-line" href="/docs" target="_blank" rel="noopener">Docs</a></li>
-      <li><a class="animate-line" href="/text" target="_blank" rel="noopener">Text</a></li>
     </ul>
   </nav>`;
 }

@@ -15,15 +15,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-# Copy built frontend + server code + static assets
+# Copy built frontend + server code
 COPY --from=builder /app/dist ./dist
-COPY web-api.js ./
+COPY web-api.ts ./
 COPY src/server ./src/server
 COPY src/core ./src/core
-COPY text ./text
-COPY public ./public
-COPY api-docs.html ./
-COPY prompt.txt ./
 RUN mkdir -p data
 
 ENV NODE_ENV=production
@@ -34,4 +30,4 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
-CMD ["node", "web-api.js"]
+CMD ["npx", "tsx", "web-api.ts"]

@@ -4,7 +4,7 @@ import type { ServerResponse } from "http";
 import { sendJSON } from "../utils.js";
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
-const FORUM_URL = "https://viper.to/forums/304-Hardcore-Photo-Sets";
+const FORUM_URL = "https://vipergirls.to/forums/304-Hardcore-Photo-Sets";
 
 interface RssEntry {
   title: string;
@@ -31,7 +31,7 @@ function parseForumPage(html: string): RssEntry[] {
     const titleTag = $(el).find('a[id^="thread_title_"]').first();
     if (!titleTag.length) return;
     let href = titleTag.attr("href") || "";
-    if (href && !href.startsWith("http")) href = "https://viper.to/" + href.replace(/^\//, "");
+    if (href && !href.startsWith("http")) href = "https://vipergirls.to/" + href.replace(/^\//, "");
     href = href.replace(/\?s=[^&]*/, "").replace(/&s=[^&]*/g, "");
 
     let thumbnails: string[] = [];

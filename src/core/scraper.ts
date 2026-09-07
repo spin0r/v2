@@ -210,7 +210,7 @@ export class ViperGirlsDownloader {
       exactname: '1',
     };
     try {
-      const res = await this.session.get('https://viper.to/search.php', {
+      const res = await this.session.get('https://vipergirls.to/search.php', {
         params,
         timeout: 30000,
         maxRedirects: 5,
@@ -232,7 +232,7 @@ export class ViperGirlsDownloader {
     perPage = 50,
   ): Promise<[SearchResult[], number, number]> {
     try {
-      const res = await this.session.get('https://viper.to/search.php', {
+      const res = await this.session.get('https://vipergirls.to/search.php', {
         params: { searchid, pp: perPage, page },
         timeout: 30000,
       });
@@ -296,7 +296,7 @@ export class ViperGirlsDownloader {
       if (!titleTag.length) return;
       let href = titleTag.attr('href') || '';
       if (href && !href.startsWith('http'))
-        href = 'https://viper.to/' + href.replace(/^\//, '');
+        href = 'https://vipergirls.to/' + href.replace(/^\//, '');
       href = href.replace(/\?.*$/, '');
       const prefixTag = $(el).find('span[id^="thread_prefix_"]').first();
       const prefix = prefixTag.length

@@ -273,6 +273,43 @@ export function bindCardEvents(appEl: HTMLElement): void {
     });
   });
 
+  // Local retry buttons on cards (triggers local fallback via extension)
+  appEl.querySelectorAll<HTMLElement>("[data-local-retry-card]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const raw = btn.dataset.localRetryCard || "";
+      const result = state.completedCards.get(raw) || state.completedCards.get(parseInt(raw));
+      if (result) {
+        state.modalData = result;
+        render();
+        requestAnimationFrame(() => {
+          const localBtn = document.querySelector<HTMLButtonElement>("#modal-reextract-local");
+          if (localBtn && !localBtn.disabled) localBtn.click();
+        });
+      }
+    });
+  });
+
+  // Local retry buttons for inline post extractions
+  appEl.querySelectorAll<HTMLElement>("[data-local-retry-post]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.localRetryPost || "";
+      const result =
+        state.completedCards.get(key) ||
+        state.completedCards.get(parseInt(key)) ||
+        state.completedThreadPosts.get(parseInt(key));
+      if (result) {
+        state.modalData = result;
+        render();
+        requestAnimationFrame(() => {
+          const localBtn = document.querySelector<HTMLButtonElement>("#modal-reextract-local");
+          if (localBtn && !localBtn.disabled) localBtn.click();
+        });
+      }
+    });
+  });
+
   // Retry buttons for inline post extractions
   appEl.querySelectorAll<HTMLElement>("[data-retry-card-idx]").forEach((btn) => {
     btn.addEventListener("click", (e) => {

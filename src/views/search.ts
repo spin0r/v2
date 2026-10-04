@@ -135,14 +135,15 @@ function renderCard(r: SearchResult, idx: number): string {
     const ok = completedData.ok;
     const errMsg = !ok ? completedData.error || "Extraction failed" : "";
     const isImgNotFound = errMsg.toLowerCase().includes("images not found") || errMsg.toLowerCase().includes("no image links");
-    const hasFailedLinks = ok && completedData.failedLinks && completedData.failedLinks.length > 0;
+    const hasFailedLinks = Boolean(completedData.failedLinks && completedData.failedLinks.length > 0);
     actionsHtml = `
       <div class="result-actions">
         <button class="action-btn" data-open="${r.url}" title="Open thread">${svgIcon("external")}</button>
-        ${!ok ? `<button class="action-btn retry-btn" data-retry-idx="${idx}" title="Retry extraction">↻ Retry</button>` : ""}
+        ${hasFailedLinks ? `<button class="action-btn local-retry-btn" data-local-retry-card="${idx}" title="Resolve ${completedData.failedLinks!.length} blocked links via local extension">⚡ Local (${completedData.failedLinks!.length})</button>` : ""}
+        ${!ok && !hasFailedLinks ? `<button class="action-btn retry-btn" data-retry-idx="${idx}" title="Retry extraction">↻ Retry</button>` : ""}
         ${ok && (completedData.sendCommand || completedData.dlCommand) ? `<button class="action-btn copy-cmd-btn" data-copy-card="${idx}" title="Copy commands">${svgIcon("copy")}</button>` : ""}
-        <button class="action-btn ${ok ? (hasFailedLinks ? "done-warn" : "done") : "done-error"}" data-view-completed="${idx}" title="${ok ? (hasFailedLinks ? `${completedData.failed} images failed — click to re-extract` : "View result") : errMsg}">
-          ${ok ? "✓" : isImgNotFound ? "× Not found" : "× Error"} ${ok ? `${completedData.extracted}/${completedData.total}` : ""}${hasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedData.failed} failed)</span>` : ""}
+        <button class="action-btn ${hasFailedLinks ? "done-warn" : ok ? "done" : "done-error"}" data-view-completed="${idx}" title="${hasFailedLinks ? `${completedData.failed || completedData.failedLinks!.length} images failed — click for Local Fallback` : ok ? "View result" : errMsg}">
+          ${ok ? "✓" : hasFailedLinks ? "⚠️" : isImgNotFound ? "× Not found" : "× Error"} ${completedData.extracted ?? 0}/${completedData.total ?? (completedData.failedLinks?.length || 0)}${hasFailedLinks ? ` <span style="color:#f87171;font-size:10px">(${completedData.failed || completedData.failedLinks!.length} failed)</span>` : ""}
         </button>
       </div>`;
   } else if (isScraped && scrapedData) {
@@ -162,11 +163,12 @@ function renderCard(r: SearchResult, idx: number): string {
           const ok = postCompleted.ok;
           const pErrMsg = !ok ? postCompleted.error || "Failed" : "";
           const pIsImgNotFound = pErrMsg.toLowerCase().includes("images not found") || pErrMsg.toLowerCase().includes("no image links");
+          const pHasFailedLinks = Boolean(postCompleted.failedLinks && postCompleted.failedLinks.length > 0);
           postBtn = `<div style="display:flex;gap:4px;align-items:center">
-          ${!ok ? `<button class="action-btn retry-btn" data-retry-card-idx="${idx}" data-retry-post-idx="${pi}" style="font-size:11px;padding:3px 8px" title="Retry">↻</button>` : ""}
+          ${pHasFailedLinks ? `<button class="action-btn local-retry-btn" data-local-retry-post="${idx}-${pi}" style="font-size:11px;padding:3px 8px" title="Resolve via local extension">⚡ Local (${postCompleted.failedLinks!.length})</button>` : (!ok ? `<button class="action-btn retry-btn" data-retry-card-idx="${idx}" data-retry-post-idx="${pi}" style="font-size:11px;padding:3px 8px" title="Retry">↻</button>` : "")}
           ${ok && (postCompleted.sendCommand || postCompleted.dlCommand) ? `<button class="action-btn copy-cmd-btn" data-copy-card="${idx}-${pi}" style="font-size:11px;padding:3px 8px" title="Copy commands">${svgIcon("copy")}</button>` : ""}
-          <button class="action-btn ${ok ? "done" : "done-error"}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px" title="${ok ? "" : pErrMsg}">
-            ${ok ? "✓" : pIsImgNotFound ? "×" : "×"} ${ok ? `${postCompleted.extracted}/${postCompleted.total}` : "Fail"}
+          <button class="action-btn ${pHasFailedLinks ? "done-warn" : ok ? "done" : "done-error"}" data-view-completed="${idx}-${pi}" style="font-size:11px;padding:3px 10px" title="${pHasFailedLinks ? `${postCompleted.failed} failed — click to view` : ok ? "" : pErrMsg}">
+            ${ok ? "✓" : pHasFailedLinks ? "⚠️" : pIsImgNotFound ? "×" : "×"} ${postCompleted.extracted ?? 0}/${postCompleted.total ?? (postCompleted.failedLinks?.length || 0)}
           </button>
         </div>`;
         } else {

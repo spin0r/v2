@@ -1,3 +1,5 @@
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
 import "dotenv/config";
 import http from "http";
 import fs from "fs";

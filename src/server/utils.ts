@@ -17,8 +17,32 @@ export function md5(s: string): string {
   return crypto.createHash('md5').update(s).digest('hex');
 }
 
-export const vgCache = new Map<string, unknown[]>();
-export const apsCache = new Map<string, unknown[]>();
+const HISTORY_DIR = path.join(__dirname, '..', '..', 'data');
+const SEARCH_CACHE_FILE = path.join(HISTORY_DIR, 'search-cache.json');
+
+function loadSearchCache(): { vg?: Record<string, unknown[]>; aps?: Record<string, unknown[]> } {
+  try {
+    if (fs.existsSync(SEARCH_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(SEARCH_CACHE_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
+export function persistSearchCache(): void {
+  try {
+    if (!fs.existsSync(HISTORY_DIR)) fs.mkdirSync(HISTORY_DIR, { recursive: true });
+    const payload = {
+      vg: Object.fromEntries(vgCache.entries()),
+      aps: Object.fromEntries(apsCache.entries()),
+    };
+    fs.writeFileSync(SEARCH_CACHE_FILE, JSON.stringify(payload));
+  } catch {}
+}
+
+const initialCache = loadSearchCache();
+export const vgCache = new Map<string, unknown[]>(Object.entries(initialCache.vg || {}));
+export const apsCache = new Map<string, unknown[]>(Object.entries(initialCache.aps || {}));
 export const threadCache = new Map<string, unknown>();
 
 export function sendJSON(
@@ -70,7 +94,6 @@ export function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-const HISTORY_DIR = path.join(__dirname, '..', '..', 'data');
 const HISTORY_FILE = path.join(HISTORY_DIR, 'history.json');
 
 export function loadHistory(): unknown[] {

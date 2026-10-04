@@ -1,6 +1,6 @@
 import type { ServerResponse } from "http";
 import { ViperGirlsDownloader, AdultPhotoSetsScraper } from "../../core/scraper.js";
-import { md5, vgCache, apsCache, sendJSON, PAGE_SIZE } from "../utils.js";
+import { md5, vgCache, apsCache, sendJSON, PAGE_SIZE, persistSearchCache } from "../utils.js";
 
 export async function handleVgSearch(params: URLSearchParams, res: ServerResponse): Promise<void> {
   const query = params.get("q") || "";
@@ -43,6 +43,7 @@ export async function handleVgSearch(params: URLSearchParams, res: ServerRespons
       .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
       .map((r) => ({ ...r, title: (r.prefix ? `[${r.prefix}] ` : "") + r.title, sgenId: md5(r.url).slice(0, 6) }));
     vgCache.set(key, results);
+    persistSearchCache();
   }
 
   const totalUnfiltered = results.length;
@@ -84,6 +85,7 @@ export async function handleApsSearch(params: URLSearchParams, res: ServerRespon
     const raw = await scraper.searchAll(query);
     results = raw.map((r) => ({ ...r, apsId: md5(r.url).slice(0, 6) }));
     apsCache.set(key, results);
+    persistSearchCache();
   }
 
   const total = results.length;

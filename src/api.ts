@@ -295,8 +295,10 @@ export async function apiReExtract(
   title: string,
   sourceUrl: string,
   searchQuery: string,
-  indexedFailedLinks?: string[],
-  indexedUrls?: string[],
+  indexedFailedLinks?: any[],
+  indexedUrls?: any,
+  resolvedLinks?: Record<string, string>,
+  resolvedIndexed?: { index: number; link: string; directUrl: string }[],
 ): Promise<FetchResult> {
   const res = await fetch(`${API}/re-extract`, {
     method: "POST",
@@ -309,6 +311,8 @@ export async function apiReExtract(
       searchQuery,
       indexedFailedLinks,
       indexedUrls,
+      resolvedLinks,
+      resolvedIndexed,
     }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

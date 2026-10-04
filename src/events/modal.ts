@@ -3,6 +3,7 @@ import { toast, copyText } from "../utils.ts";
 import { apiReExtract, apiThreadPostExtractStream } from "../api.ts";
 
 export function bindModalEvents(appEl: HTMLElement): void {
+  setupExtensionBridge();
   const overlay = appEl.querySelector("#modal-overlay");
   if (overlay) {
     overlay.addEventListener("click", (e) => {
@@ -211,6 +212,69 @@ export function bindModalEvents(appEl: HTMLElement): void {
       }
     });
 
+  // Re-extract Local (via Local Browser Extension fallback)
+  const reextractLocalBtn = appEl.querySelector<HTMLButtonElement>("#modal-reextract-local");
+  if (reextractLocalBtn)
+    reextractLocalBtn.addEventListener("click", async () => {
+      const d = state.modalData;
+      if (!d || !d.failedLinks || !d.failedLinks.length) return;
+      reextractLocalBtn.disabled = true;
+      reextractLocalBtn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Routing via Local IP…';
+      try {
+        toast(`⚡ Sending ${d.failedLinks.length} blocked links to local browser extension...`);
+        const resolved = await requestLocalExtensionExtraction(
+          d.failedLinks,
+          d.indexedFailedLinks,
+        );
+
+        const recoveredCount =
+          (resolved.resolvedIndexed && resolved.resolvedIndexed.length) ||
+          Object.keys(resolved.resolvedLinks || {}).length;
+
+        if (recoveredCount === 0) {
+          throw new Error("Extension could not resolve any direct image links.");
+        }
+
+        reextractLocalBtn.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:1.5px"></div> Merging & Saving…';
+
+        const result = await apiReExtract(
+          d.failedLinks,
+          d.directUrls || [],
+          d.title || "",
+          d.sourceUrl || "",
+          d.hashtag ? d.hashtag.replace("#", "").replace(/_/g, " ").trim() : "",
+          d.indexedFailedLinks || undefined,
+          d.indexedUrls || undefined,
+          resolved.resolvedLinks,
+          resolved.resolvedIndexed,
+        );
+
+        state.modalData = { ...result, title: result.title || d.title, sourceUrl: result.sourceUrl || d.sourceUrl };
+        for (const [key, val] of state.completedCards.entries()) {
+          if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+            state.completedCards.set(key, state.modalData);
+            break;
+          }
+        }
+        for (const [key, val] of state.completedThreadPosts.entries()) {
+          if (val === d || (val.title === d.title && val.sourceUrl === d.sourceUrl)) {
+            state.completedThreadPosts.set(key, state.modalData);
+            break;
+          }
+        }
+        render();
+        if ((result.newlyRecovered ?? 0) > 0) {
+          toast(`✓ Recovered ${result.newlyRecovered} images via Local IP! Now ${result.extracted}/${result.total}`, "success");
+        } else {
+          toast(`No additional images recovered (${result.extracted}/${result.total})`, "error");
+        }
+      } catch (err) {
+        toast(`Local fallback: ${(err as Error).message}`, "error");
+        reextractLocalBtn.disabled = false;
+        reextractLocalBtn.innerHTML = `⚡ Local Fallback (${d.failedLinks.length})`;
+      }
+    });
+
   // Re-extract All
   const reextractAllBtn = appEl.querySelector("#modal-reextract-all");
   if (reextractAllBtn)
@@ -263,5 +327,87 @@ export function bindModalEvents(appEl: HTMLElement): void {
       if ((e.target as HTMLElement).closest(".cmd-source-link")) return;
       copyText((el.dataset.copyCmd || "").replace(/\\n/g, "\n") + "\n");
     });
+  });
+}
+
+let extensionBridgeBound = false;
+
+function setupExtensionBridge(): void {
+  if (extensionBridgeBound) return;
+  extensionBridgeBound = true;
+
+  window.addEventListener("message", (e) => {
+    if (!e.data || typeof e.data !== "object") return;
+
+    if (e.data.type === "VIPER_PAGE_GET_FAILED_LINKS") {
+      const d = state.modalData;
+      window.postMessage(
+        {
+          type: "VIPER_PAGE_FAILED_LINKS_RESPONSE",
+          id: e.data.id,
+          hasModal: !!d,
+          title: d?.title || "",
+          failedCount: d?.failedLinks?.length || 0,
+          failedLinks: d?.failedLinks || [],
+          indexedFailedLinks: d?.indexedFailedLinks || [],
+        },
+        "*",
+      );
+    } else if (e.data.type === "VIPER_TRIGGER_LOCAL_REEXTRACT") {
+      const localBtn = document.querySelector<HTMLButtonElement>("#modal-reextract-local");
+      if (localBtn && !localBtn.disabled) {
+        localBtn.click();
+      }
+    }
+  });
+}
+
+function requestLocalExtensionExtraction(
+  links: string[],
+  indexedFailedLinks?: any[],
+): Promise<{
+  resolvedIndexed: { index: number; link: string; directUrl: string }[];
+  resolvedLinks: Record<string, string>;
+}> {
+  return new Promise((resolve, reject) => {
+    const reqId = "req_" + Math.random().toString(36).slice(2, 10);
+    let handled = false;
+
+    const timeout = setTimeout(() => {
+      if (!handled) {
+        handled = true;
+        window.removeEventListener("message", handler);
+        reject(
+          new Error(
+            "Local extension not detected or timed out. Please load the unpacked extension from the ./extension folder in chrome://extensions."
+          ),
+        );
+      }
+    }, 25000);
+
+    function handler(e: MessageEvent) {
+      if (!e.data || e.data.type !== "VIPER_EXT_RESOLVE_RESPONSE" || e.data.id !== reqId) return;
+      handled = true;
+      clearTimeout(timeout);
+      window.removeEventListener("message", handler);
+
+      if (e.data.success) {
+        resolve(e.data.data);
+      } else {
+        reject(new Error(e.data.error || "Extension failed to extract links"));
+      }
+    }
+
+    window.addEventListener("message", handler);
+
+    window.postMessage(
+      {
+        type: "VIPER_EXT_RESOLVE_REQUEST",
+        id: reqId,
+        links,
+        indexedFailedLinks,
+      },
+      "*",
+    );
   });
 }

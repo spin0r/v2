@@ -72,7 +72,8 @@ function renderModal(): string {
       <div class="modal-actions" style="margin-top:16px">
         ${d.pasteUrl ? `<button class="action-btn" id="modal-copy-paste">${svgIcon("copy")} Copy Link</button>` : ""}
         ${d.sendCommand ? `<button class="action-btn" id="modal-copy-send">${svgIcon("copy")} Copy /s</button>` : ""}
-        ${d.ok && d.failedLinks && d.failedLinks.length > 0 ? `<button class="action-btn retry-btn" id="modal-reextract-failed" title="Retry ${d.failedLinks.length} failed extractions">↻ Re-extract Failed (${d.failedLinks.length})</button>` : ""}
+        ${d.ok && d.failedLinks && d.failedLinks.length > 0 ? `<button class="action-btn retry-btn" id="modal-reextract-failed" title="Retry ${d.failedLinks.length} failed extractions on server">↻ Re-extract (${d.failedLinks.length})</button>` : ""}
+        ${d.ok && d.failedLinks && d.failedLinks.length > 0 ? `<button class="action-btn local-retry-btn" id="modal-reextract-local" title="Route extractions through your local machine internet via browser extension (bypasses IP blocks like vipr.im)">⚡ Local Fallback (${d.failedLinks.length})</button>` : ""}
         ${d.ok ? `<button class="action-btn" id="modal-reextract-all" title="Re-extract all images from scratch" style="color:#a78bfa">↻ Re-extract All</button>` : ""}
         <button class="action-btn primary" id="modal-open" data-url="${d.sourceUrl}">
           ${svgIcon("external")} Open Thread

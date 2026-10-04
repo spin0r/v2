@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viper Local Extractor</title>
+  <style>
+    :root {
+      --bg: #0c0d12;
+      --card-bg: #14161f;
+      --card-border: #232738;
+      --accent: #8b5cf6;
+      --cyan: #38bdf8;
+      --green: #10b981;
+      --red: #f43f5e;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 360px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      user-select: none;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-row img {
+      width: 22px;
+      height: 22px;
+    }
+    .logo-text {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      color: #fff;
+    }
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 9999px;
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .tab-status {
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #0284c7);
+      color: #000;
+      border-color: #38bdf8;
+    }
+    .btn-primary:hover {
+      filter: brightness(1.1);
+    }
+    .btn-secondary {
+      background: #1e2230;
+      color: var(--text);
+      border-color: var(--card-border);
+    }
+    .btn-secondary:hover {
+      background: #252b3d;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    textarea {
+      width: 100%;
+      height: 70px;
+      background: #090a0f;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 11px;
+      padding: 8px;
+      resize: vertical;
+      margin-bottom: 8px;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: var(--cyan);
+    }
+    .output-box {
+      margin-top: 8px;
+      display: none;
+    }
+    .output-box.show {
+      display: block;
+    }
+    .results-text {
+      font-family: monospace;
+      font-size: 10px;
+      max-height: 90px;
+      overflow-y: auto;
+      background: #090a0f;
+      border: 1px solid var(--card-border);
+      padding: 6px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-bottom: 6px;
+    }
+    .notice {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo-row">
+      <img src="icons/icon-48.png" alt="icon">
+      <span class="logo-text">VIPER LOCAL</span>
+    </div>
+    <span class="badge">Residential IP</span>
+  </div>
+
+  <div class="card" id="page-card">
+    <div class="card-title">Active Tab</div>
+    <div class="tab-status" id="tab-status">Checking active tab…</div>
+    <button class="btn btn-primary" id="btn-tab-fallback" style="display:none">
+      ⚡ Resolve Blocked Links on Page
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Manual URL Extractor</div>
+    <textarea id="manual-input" placeholder="Paste links (vipr.im, postimg, imgbox...) one per line"></textarea>
+    <button class="btn btn-secondary" id="btn-manual-extract">
+      Extract with Local Internet
+    </button>
+
+    <div class="output-box" id="manual-output-box">
+      <div class="results-text" id="manual-results"></div>
+      <button class="btn btn-secondary" id="btn-copy-results" style="font-size:11px;padding:6px">
+        Copy All Direct Links
+      </button>
+    </div>
+  </div>
+
+  <div class="notice">
+    Requests bypass cloud datacenter blocks by executing directly from your home network connection.
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

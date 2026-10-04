@@ -340,6 +340,8 @@ export async function handleReExtract(
     title,
     sourceUrl,
     searchQuery,
+    resolvedLinks,
+    resolvedIndexed,
   } = parsed as {
     failedLinks: string[];
     previousUrls?: string[];
@@ -348,6 +350,8 @@ export async function handleReExtract(
     title?: string;
     sourceUrl?: string;
     searchQuery?: string;
+    resolvedLinks?: Record<string, string>;
+    resolvedIndexed?: { index: number; link: string; directUrl: string }[];
   };
   if (!failedLinks?.length)
     return sendJSON(res, 400, { error: 'No failed links to retry' });
@@ -369,9 +373,36 @@ export async function handleReExtract(
   if (hasIndexedData)
     for (const [idx, url] of Object.entries(indexedUrls!)) urlMap[idx] = url;
 
-  const linksToRetry = hasIndexedData
+  // Pre-populate urlMap with direct URLs resolved via local extension
+  if (resolvedIndexed && Array.isArray(resolvedIndexed)) {
+    for (const item of resolvedIndexed) {
+      if (item && item.directUrl && item.index !== undefined) {
+        urlMap[item.index] = item.directUrl;
+        const hostMatch = IMAGE_HOSTS.find((h) => (item.link || '').includes(h));
+        if (hostMatch) hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
+      }
+    }
+  }
+  if (resolvedLinks && typeof resolvedLinks === 'object') {
+    const defaultEntries = hasIndexedData
+      ? indexedFailedLinks!
+      : failedLinks.map((link, i) => ({ index: prevUrls.length + i, link }));
+    for (const entry of defaultEntries) {
+      const direct = resolvedLinks[entry.link];
+      if (direct && !urlMap[entry.index]) {
+        urlMap[entry.index] = direct;
+        const hostMatch = IMAGE_HOSTS.find((h) => entry.link.includes(h));
+        if (hostMatch) hostCounts[hostMatch] = (hostCounts[hostMatch] || 0) + 1;
+      }
+    }
+  }
+
+  const allCandidateLinks = hasIndexedData
     ? indexedFailedLinks!
     : failedLinks.map((link, i) => ({ index: prevUrls.length + i, link }));
+
+  // Only retry links that were NOT already resolved locally
+  const linksToRetry = allCandidateLinks.filter((entry) => !urlMap[entry.index]);
 
   const chunks: (typeof linksToRetry)[] = [];
   for (let i = 0; i < linksToRetry.length; i += RETRY_CONCURRENCY)
@@ -421,7 +452,10 @@ export async function handleReExtract(
       .map((i) => urlMap[i]);
     newlyRecovered = allUrls.length - Object.keys(indexedUrls!).length;
   } else {
-    const recoveredUrls = Object.values(urlMap);
+    const recoveredUrls = Object.keys(urlMap)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((i) => urlMap[i]);
     allUrls = [...prevUrls, ...recoveredUrls];
     newlyRecovered = recoveredUrls.length;
   }
